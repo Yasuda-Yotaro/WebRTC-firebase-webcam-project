@@ -1,4 +1,4 @@
-// main.js (ドラッグ状態管理を修正した最終版)
+// main.js
 
 import { updateRoleUI, populateCameraList, updateCameraCountUI } from './ui.js';
 import * as uiElements from './ui-elements.js';
@@ -10,107 +10,10 @@ import { startRecording, stopRecording, downloadVideo } from './recording.js';
 import { start as startArucoTracking, stop as stopArucoTracking } from './aruco.js';
 import * as evaluation from './evaluation.js';
 
-// ▼▼▼ 根本原因修正 ▼▼▼
-// PTZ操作のためのドラッグ状態を管理する変数を、モジュールのトップレベルに移動。
-// これにより、複数のビデオコンテナで状態が共有され、競合しなくなる。
-let isDragging = false;
-let lastMouseX = 0;
-let lastMouseY = 0;
-let draggedElement = null;
-
-// ドラッグ終了処理もトップレベルに定義
-const stopDrag = () => {
-  if (isDragging) {
-    isDragging = false;
-    if (draggedElement) {
-      draggedElement.classList.remove('dragging');
-      draggedElement = null;
-    }
-  }
-};
-// ▲▲▲ 根本原因修正 ▲▲▲
-
-/**
- * 指定されたビデオコンテナにPTZ操作のためのマウスイベントリスナーを設定する。
- * @param {HTMLElement} container - イベントリスナーを設定するコンテナ要素
- */
-export function activatePtzControlsForVideo(container) {
-  // スロットリングのための変数
-  let throttleTimer = null;
-  const THROTTLE_DELAY = 50; // 50msごとにコマンドを送信
-
-  // マウス移動（ドラッグ）時の処理
-  const handlePtzOnMouseMove = (event) => {
-    if (!isDragging) return; // トップレベルの isDragging を参照
-    if (throttleTimer) return;
-
-    const commandTimestamp = performance.now();
-    throttleTimer = setTimeout(() => {
-        const PAN_SENSITIVITY_DIVISOR = 5;
-        const TILT_SENSITIVITY_DIVISOR = 5;
-        const deltaX = event.clientX - lastMouseX;
-        const deltaY = event.clientY - lastMouseY;
-        
-        evaluation.logData('mouse', {
-            eventType: 'drag',
-            clientX: event.clientX,
-            clientY: event.clientY,
-            deltaX: deltaX,
-            deltaY: deltaY
-        });
-        
-        lastMouseX = event.clientX;
-        lastMouseY = event.clientY;
-
-        const caps = getActiveCaps();
-        if (caps.pan) sendPtzCommand('pan', getSliderValue('pan') + deltaX * (caps.pan.step / PAN_SENSITIVITY_DIVISOR), commandTimestamp);
-        if (caps.tilt) sendPtzCommand('tilt', getSliderValue('tilt') - deltaY * (caps.tilt.step / TILT_SENSITIVITY_DIVISOR), commandTimestamp);
-        
-        throttleTimer = null;
-    }, THROTTLE_DELAY);
-  };
-
-  // マウスホイール時の処理
-  const handlePtzOnWheel = (event) => {
-    event.preventDefault();
-    evaluation.logData('mouse', {
-        eventType: 'wheel',
-        deltaY: event.deltaY
-    });
-
-    const caps = getActiveCaps();
-    if (caps.zoom) {
-      const commandTimestamp = performance.now();
-      const ZOOM_SENSITIVITY_DIVISOR = 20; 
-      const newZoom = getSliderValue('zoom') - event.deltaY * (caps.zoom.step / ZOOM_SENSITIVITY_DIVISOR);
-      sendPtzCommand('zoom', newZoom, commandTimestamp);
-    }
-  };
-
-  // ドラッグ開始時の処理
-  const startDrag = (event) => {
-    if (event.button !== 0) return; // 左クリック以外は無視
-    
-    // トップレベルの変数を更新
-    isDragging = true;
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
-    draggedElement = event.currentTarget;
-    draggedElement.classList.add('dragging');
-  };
-  
-  // コンテナに各イベントリスナーを設定
-  container.addEventListener('mousedown', startDrag);
-  container.addEventListener('mousemove', handlePtzOnMouseMove);
-  container.addEventListener('wheel', handlePtzOnWheel);
-}
-
 
 // =================================================================================
 // --- イベントリスナーの初期化 (Initialize Event Listeners) ---
 // =================================================================================
-const getSliderValue = (type) => parseFloat(document.getElementById(`${type}Slider`).value);
-const getActiveCaps = () => state.ptzCapabilities[state.activePtzTarget] || {};
 
 /**
  * アプリケーションのすべてのイベントリスナーを初期化する。
@@ -175,7 +78,13 @@ function initializeEventListeners() {
       }
     });
   });
+
   
+
+  const getSliderValue = (type) => parseFloat(document.getElementById(`${type}Slider`).value);
+  
+  const getActiveCaps = () => state.ptzCapabilities[state.activePtzTarget] || {};
+
   uiElements.zoomInBtn.addEventListener("click", () => {
       const caps = getActiveCaps();
       if (caps.zoom) sendPtzCommand('zoom', getSliderValue('zoom') + caps.zoom.step);
@@ -262,10 +171,91 @@ function initializeEventListeners() {
     uiElements.fullscreenBtn2.textContent = isFullscreen && document.fullscreenElement === uiElements.remoteVideoContainer2 ? '通常表示' : 'フルスクリーン';
   });
 
-  // ▼▼▼ 根本原因修正 ▼▼▼
-  // ページ全体で一度だけ、マウスアップ（ドラッグ終了）イベントを監視する
+  // PTZ操作のためのドラッグ状態を管理する変数
+  let isDragging = false;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
+  let draggedElement = null;
+  
+  // スロットリングのための変数
+  let throttleTimer = null;
+  const THROTTLE_DELAY = 50; // 50msごとにコマンドを送信
+
+  const handlePtzOnMouseMove = (event) => {
+    if (!isDragging) return;
+
+    // 前回の処理から指定した時間が経過していなければ何もしない（スロットリング）
+    if (throttleTimer) return;
+
+    throttleTimer = setTimeout(() => {
+        // パンとチルトの感度設定（小さくすると操作量が大きくなる）
+        const PAN_SENSITIVITY_DIVISOR = 5;
+        const TILT_SENSITIVITY_DIVISOR = 5;
+
+        const deltaX = event.clientX - lastMouseX;
+        const deltaY = event.clientY - lastMouseY;
+        lastMouseX = event.clientX;
+        lastMouseY = event.clientY;
+
+        const caps = getActiveCaps();
+
+        if (caps.pan) {
+            const newPan = getSliderValue('pan') + deltaX * (caps.pan.step / PAN_SENSITIVITY_DIVISOR);
+            sendPtzCommand('pan', newPan);
+        }
+        if (caps.tilt) {
+            const newTilt = getSliderValue('tilt') - deltaY * (caps.tilt.step / TILT_SENSITIVITY_DIVISOR);
+            sendPtzCommand('tilt', newTilt);
+        }
+        
+        throttleTimer = null; // タイマーをリセット
+    }, THROTTLE_DELAY);
+  };
+
+  const handlePtzOnWheel = (event) => {
+    event.preventDefault();
+    const caps = getActiveCaps();
+
+    if (caps.zoom) {
+      // ズーム感度の設定（小さくするとズームが速くなる）
+      const ZOOM_SENSITIVITY_DIVISOR = 20; 
+
+      const currentZoom = getSliderValue('zoom');
+      const newZoom = currentZoom - event.deltaY * (caps.zoom.step / ZOOM_SENSITIVITY_DIVISOR);
+      sendPtzCommand('zoom', newZoom);
+    }
+  };
+
+  const startDrag = (event) => {
+    if (event.button !== 0) return; // 左クリック以外は無視
+    isDragging = true;
+    lastMouseX = event.clientX;
+    lastMouseY = event.clientY;
+    draggedElement = event.currentTarget;
+    draggedElement.classList.add('dragging');
+  };
+
+  const stopDrag = () => {
+    if (isDragging) {
+      isDragging = false;
+      if (draggedElement) {
+        draggedElement.classList.remove('dragging');
+        draggedElement = null;
+      }
+    }
+  };
+  
+  const setupPtzMouseListeners = (container) => {
+    container.addEventListener('mousedown', startDrag);
+    container.addEventListener('mousemove', handlePtzOnMouseMove);
+    container.addEventListener('wheel', handlePtzOnWheel);
+  };
+
+  // マウスのボタンが画面のどこで離されてもドラッグを終了する
   window.addEventListener('mouseup', stopDrag);
-  // ▲▲▲ 根本原因修正 ▲▲▲
+  
+  setupPtzMouseListeners(uiElements.remoteVideoContainer1);
+  setupPtzMouseListeners(uiElements.remoteVideoContainer2);
 }
 
 // =================================================================================
@@ -277,10 +267,10 @@ initializeEventListeners();
 populateCameraList();
 
 // 評価コントロールのイベントリスナーを設定
-document.getElementById('startArucoEvaluationBtn').addEventListener('click', () => evaluation.startEvaluation('aruco'));
-document.getElementById('stopArucoEvaluationBtn').addEventListener('click', () => evaluation.stopEvaluation('aruco'));
-document.getElementById('downloadArucoCsvBtn').addEventListener('click', () => evaluation.downloadCSV('aruco'));
+const startEvaluationBtn = document.getElementById('startEvaluationBtn');
+const stopEvaluationBtn = document.getElementById('stopEvaluationBtn');
+const downloadCsvBtn = document.getElementById('downloadCsvBtn');
 
-document.getElementById('startMouseEvaluationBtn').addEventListener('click', () => evaluation.startEvaluation('mouse'));
-document.getElementById('stopMouseEvaluationBtn').addEventListener('click', () => evaluation.stopEvaluation('mouse'));
-document.getElementById('downloadMouseCsvBtn').addEventListener('click', () => evaluation.downloadCSV('mouse'));
+startEvaluationBtn.addEventListener('click', evaluation.startEvaluation);
+stopEvaluationBtn.addEventListener('click', evaluation.stopEvaluation);
+downloadCsvBtn.addEventListener('click', evaluation.downloadCSV);

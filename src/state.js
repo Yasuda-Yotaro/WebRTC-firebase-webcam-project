@@ -15,7 +15,6 @@ export let currentRole = "sender";
 export let lastStatsReport = null;
 export let resolutionUpdateInterval = null;
 export let activePtzTarget = 'camera1';
-export let clockOffset = 0;
 
 // 録画関連の状態
 export let mediaRecorders = { camera1: null, camera2: null };
@@ -41,5 +40,3 @@ export function setActivePtzTarget(target) { activePtzTarget = target; }
 export function setMediaRecorder(target, recorder) { mediaRecorders[target] = recorder; }
 export function setRecordedChunks(target, chunks) { recordedChunks[target] = chunks; }
 export function setIsRecording(target, recording) { isRecording[target] = recording; }
-export function setClockOffset(offset) { clockOffset = offset;}
-export function getClockOffset() {return clockOffset;}

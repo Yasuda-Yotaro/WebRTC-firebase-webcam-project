@@ -2,9 +2,6 @@
 
 import * as state from './state.js';
 import * as uiElements from './ui-elements.js';
-import { listenForMovementEnd } from './movement-listener.js';
-import { measureClockOffset } from './clock-sync.js'; 
-import * as evaluation from './evaluation.js'; 
 
 /**
  * 送信者側で、指定されたカメラにPTZの制約を適用する。
@@ -62,7 +59,7 @@ export function updateReceiverPtzControls(target) {
  * @param {string} type - 'pan', 'tilt', or 'zoom'
  * @param {number} value - 送信する値
  */
-export function sendPtzCommand(type, value, timestamp = null) {
+export function sendPtzCommand(type, value) {
   const target = state.activePtzTarget;
   const capabilities = state.ptzCapabilities[target];
   
@@ -77,7 +74,7 @@ export function sendPtzCommand(type, value, timestamp = null) {
 
   const { min, max } = capabilities[type];
   const clampedValue = Math.max(min, Math.min(max, value));
-  const command = { type: 'command', target, command: type, value: clampedValue, timestamp };
+  const command = { type: 'command', target, command: type, value: clampedValue };
   
   try {
     state.ptzChannel.send(JSON.stringify(command));
@@ -119,14 +116,6 @@ export function setupPtzDataChannel() {
         const msg = JSON.parse(event.data);
         if (msg.type === 'command' && state.videoTracks[msg.target]) {
             applyPtzConstraint(msg.target, msg.command, msg.value);
-            const track = state.videoTracks[msg.target];
-            if (track && msg.timestamp) {
-                listenForMovementEnd(track, msg.command, msg.value, msg.timestamp, channel);
-            }
-        } else if (msg.type === 'ping') {
-            // ★ 追加: pingメッセージを受信したら、自分の時刻を加えてpongを返す
-            const t2 = performance.now();
-            channel.send(JSON.stringify({ type: 'pong', t1: msg.t1, t2 }));
         }
     };
     
@@ -144,11 +133,7 @@ export function handleReceiverDataChannel(event) {
     const channel = event.channel;
     state.setPtzChannel(channel);
     
-    channel.onopen = async() => {
-        console.log("RECEIVER: DataChannel is open.");
-        const offset = await measureClockOffset(channel);
-        state.setClockOffset(offset);
-    };
+    channel.onopen = () => console.log("RECEIVER: DataChannel is open.");
     channel.onmessage = (e) => {
         const msg = JSON.parse(e.data);
         if (msg.type === 'capabilities') {
@@ -168,23 +153,6 @@ export function handleReceiverDataChannel(event) {
             
             uiElements.ptzControls.style.display = 'block';
             updateReceiverPtzControls(state.activePtzTarget);
-        } else if (msg.type === 'movement_finished') {
-            // ★ 追加: 送信側から動作完了通知が届いたら、最終的な遅延を計算・記録する
-            const offset = state.getClockOffset();
-            const startTime = msg.mouseTimestamp;
-            const endTimeOnSender = msg.movementEndTime;
-
-            // 送信側の完了時刻を、受信側の時間軸に補正する
-            const correctedEndTime = endTimeOnSender - offset;
-            const latency = correctedEndTime - startTime;
-
-            console.log(`[絶対遅延記録] command: ${msg.command}, latency: ${latency.toFixed(2)} ms`);
-
-            evaluation.logData({
-                command: msg.command,
-                targetValue: msg.targetValue,
-                latency: latency
-            });
         }
     };
     channel.onclose = () => {

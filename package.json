@@ -15,7 +15,7 @@
     "vite": "^7.0.0"
   },
   "dependencies": {
-    "firebase": "^11.10.0",
+    "firebase": "^11.9.1",
     "webm-duration-fix": "^1.0.4"
   }
 }

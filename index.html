@@ -67,21 +67,12 @@
       <button id="startArucoTrackingBtn">追跡開始</button>
       <button id="stopArucoTrackingBtn" disabled>追跡停止</button>
       <span id="arucoTrackingStatus"></span>
-
-      <div id="aruco-evaluation-controls" class="control-group">
-          <h3>ArUco追跡 評価コントロール</h3>
-          <p>ステータス: <span id="arucoEvaluationStatus">評価停止中</span></p>
-          <button id="startArucoEvaluationBtn">評価開始</button>
-          <button id="stopArucoEvaluationBtn" disabled>評価停止</button>
-          <button id="downloadArucoCsvBtn" disabled>CSVダウンロード</button>
-      </div>
-
-      <div id="mouse-evaluation-controls" class="control-group">
-          <h3>マウス操作 評価コントロール</h3>
-          <p>ステータス: <span id="mouseEvaluationStatus">評価停止中</span></p>
-          <button id="startMouseEvaluationBtn">評価開始</button>
-          <button id="stopMouseEvaluationBtn" disabled>評価停止</button>
-          <button id="downloadMouseCsvBtn" disabled>CSVダウンロード</button>
+      <div id="evaluationControl" class="control-section">
+        <h3>追跡評価</h3>
+        <p>ステータス: <span id="evaluationStatus">評価停止中</span></p>
+        <button id="startEvaluationBtn">評価開始</button>
+        <button id="stopEvaluationBtn" disabled>評価停止</button>
+        <button id="downloadCsvBtn" disabled>CSVダウンロード</button>
       </div>
     </div>
 

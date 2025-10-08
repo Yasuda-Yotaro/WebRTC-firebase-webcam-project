@@ -63,7 +63,7 @@ function populateSenderStats(stats, dataToRecord) {
       // 先ほど作成したMapを使い、この送信ストリームの元（mediaSourceId）に対応するトラックIDを取得
       const trackIdentifier = sourceToTrackIdentifierMap.get(report.mediaSourceId);
       if (!trackIdentifier) {
-        return;
+        return; 
       }
 
       let cameraName;
@@ -122,23 +122,8 @@ function populateSenderStats(stats, dataToRecord) {
         dataToRecord.connection_type = connectionTypeValue;  // 接続タイプを数値で保存
       }
     }
-    // ----- ▼ データチャネル統計情報の収集を修正 ▼ -----
-    if (report.type === 'data-channel') {
-      const lastDataChannelReport = state.lastStatsReport?.get(report.id);
-      const bytesSent = report.bytesSent - (lastDataChannelReport?.bytesSent ?? 0);
-      const bytesReceived = report.bytesReceived - (lastDataChannelReport?.bytesReceived ?? 0);
-
-      dataToRecord[`datachannel_${report.label}_state`] = report.state;
-      dataToRecord[`datachannel_${report.label}_messages_sent`] = report.messagesSent;
-      dataToRecord[`datachannel_${report.label}_bytes_sent_total`] = report.bytesSent; // 総送信バイト数を別名で記録
-      dataToRecord[`datachannel_${report.label}_messages_received`] = report.messagesReceived;
-      dataToRecord[`datachannel_${report.label}_bytes_received_total`] = report.bytesReceived; // 総受信バイト数を別名で記録
-      dataToRecord[`datachannel_${report.label}_sent_bitrate_kbps`] = Math.round((Math.max(0, bytesSent) * 8) / 1000); // 1秒ごとの送信ビットレート
-      dataToRecord[`datachannel_${report.label}_received_bitrate_kbps`] = Math.round((Math.max(0, bytesReceived) * 8) / 1000); // 1秒ごとの受信ビットレート
-    }
-    // ----- ▲ データチャネル統計情報の収集を修正 ▲ -----
   });
-}
+} 
 
 
 /**
@@ -179,21 +164,6 @@ function populateReceiverStats(stats, dataToRecord) {
         dataToRecord.connection_type = remoteCandidate.candidateType;
       }
     }
-    // ----- ▼ データチャネル統計情報の収集を修正 ▼ -----
-    if (report.type === 'data-channel') {
-        const lastDataChannelReport = state.lastStatsReport?.get(report.id);
-        const bytesSent = report.bytesSent - (lastDataChannelReport?.bytesSent ?? 0);
-        const bytesReceived = report.bytesReceived - (lastDataChannelReport?.bytesReceived ?? 0);
-  
-        dataToRecord[`datachannel_${report.label}_state`] = report.state;
-        dataToRecord[`datachannel_${report.label}_messages_sent`] = report.messagesSent;
-        dataToRecord[`datachannel_${report.label}_bytes_sent_total`] = report.bytesSent; // 総送信バイト数を別名で記録
-        dataToRecord[`datachannel_${report.label}_messages_received`] = report.messagesReceived;
-        dataToRecord[`datachannel_${report.label}_bytes_received_total`] = report.bytesReceived; // 総受信バイト数を別名で記録
-        dataToRecord[`datachannel_${report.label}_sent_bitrate_kbps`] = Math.round((Math.max(0, bytesSent) * 8) / 1000); // 1秒ごとの送信ビットレート
-        dataToRecord[`datachannel_${report.label}_received_bitrate_kbps`] = Math.round((Math.max(0, bytesReceived) * 8) / 1000); // 1秒ごとの受信ビットレート
-      }
-    // ----- ▲ データチャネル統計情報の収集を修正 ▲ -----
   });
 }
 
@@ -267,7 +237,7 @@ export function downloadStatsAsCsv() {
   // 収集したすべての統計情報（recordedStats）を1行ずつ（row）取り出してループ処理
   state.recordedStats.forEach(row => Object.keys(row).forEach(key => headerSet.add(key))); // 取り出したキー（'packetsLost', 'jitter'など）をheaderSetに追加
   const headers = Array.from(headerSet); // Setから通常の配列（Array）に変換、これによりヘッダーの順序が固定
-
+  
   // CSVの各行を文字列として格納するための配列 `csvRows` を準備
   const csvRows = [
     headers.join(','), // 1行目：ヘッダー行を作成、headers配列の各項目をカンマ(,)で連結した文字列

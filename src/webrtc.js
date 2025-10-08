@@ -1,4 +1,4 @@
-// src/webrtc.js (コメント完全復元版)
+// webrtc.js
 
 import { db } from "./firebase-config.js";
 /*
@@ -17,8 +17,6 @@ import * as ptz from './ptz.js';
 import { stopStatsRecording, updateResolutionDisplay, startStatsRecording } from './stats.js';
 import { stopRecording } from './recording.js';
 import { stop as stopArucoTracking } from './aruco.js';
-// ▼▼▼ 変更点: main.jsからマウスリスナー設定用の関数をインポート ▼▼▼
-import { activatePtzControlsForVideo } from './main.js';
 
 // 利用可能な解像度のプリセット
 export const RESOLUTIONS = {
@@ -338,12 +336,8 @@ export async function joinCall() {
     // 相手から映像や音声のトラックが送られてきたときに呼び出される処理
     state.peerConnection.ontrack = event => {
       if (event.track.kind === 'video' && videoIndex < cameraCount) { 
-        const currentContainer = containerElements[videoIndex]; // ▼▼▼ 変更点 ▼▼▼
         videoElements[videoIndex].srcObject = event.streams[0]; // videoElements配列から対応する<video>要素にストリームを設定して表示
-        currentContainer.style.display = 'inline-block'; // コンテナを表示
-        
-        // ▼▼▼ 変更点: ビデオが表示されるこのタイミングで、マウスリスナーを設定する関数を呼び出す ▼▼▼
-        activatePtzControlsForVideo(currentContainer);
+        containerElements[videoIndex].style.display = 'inline-block'; // コンテナを表示
 
         const cameraName = cameraNames[videoIndex]; // camera1, camera2の名前を順に取得
         remoteTracks[event.track.id] = { 
