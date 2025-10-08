@@ -193,7 +193,7 @@ function processVideo() {
             // PTZ制御と評価データ計算
             const evalData = calculateAndApplyConstraint(corners.get(0), processWidth, processHeight);
             if (shouldLog) {
-                evaluation.logData({ detected: 1, ...evalData });
+                evaluation.logData('aruco', { detected: 1, ...evalData });
             }
 
             // マーカーの枠を描画する
@@ -212,7 +212,7 @@ function processVideo() {
 
         } else {
             if (shouldLog) {
-                evaluation.logData({ 
+                evaluation.logData('aruco', { 
                     detected: 0, markerX: null, markerY: null, errorX: null, errorY: null, 
                     panAdjustment: null, tiltAdjustment: null 
                 });

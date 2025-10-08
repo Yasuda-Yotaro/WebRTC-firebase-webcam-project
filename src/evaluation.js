@@ -1,121 +1,143 @@
 // src/evaluation.js
 
-let evaluationData = [];
-let evaluationBuffer = [];
-let isEvaluating = false;
-let startTime = 0;
-let flushIntervalId = null;
-let stopTimeoutId = null; // ★ 停止処理用のタイムアウトID
+// グローバルな評価データを、評価タイプをキーとするオブジェクトで管理するように変更
+const evaluationStates = {};
 
 const FLUSH_INTERVAL = 1000;
-const FINALIZATION_WAIT_TIME = 2000; // ★ 停止後、最後のデータを待つ時間 (2秒)
+const FINALIZATION_WAIT_TIME = 2000;
+
+/**
+ * 指定されたタイプの評価状態を取得または初期化する
+ * @param {string} type - 評価のタイプ ('aruco', 'mouse'など)
+ * @returns {object} 評価状態オブジェクト
+ */
+function getState(type) {
+    if (!evaluationStates[type]) {
+        evaluationStates[type] = {
+            data: [],
+            buffer: [],
+            isEvaluating: false,
+            startTime: 0,
+            flushIntervalId: null,
+            stopTimeoutId: null
+        };
+    }
+    return evaluationStates[type];
+}
 
 /**
  * バッファに溜まったデータをメインの配列に移動する
  */
-function flushBuffer() {
-    if (evaluationBuffer.length > 0) {
-        evaluationData.push(...evaluationBuffer);
-        evaluationBuffer = [];
+function flushBuffer(type) {
+    const state = getState(type);
+    if (state.buffer.length > 0) {
+        state.data.push(...state.buffer);
+        state.buffer = [];
     }
 }
 
 /**
  * 評価を開始する
+ * @param {string} type - 評価のタイプ
  */
-export function startEvaluation() {
-    if (isEvaluating) return;
-    // 以前の停止処理が残っていたらクリア
-    if (stopTimeoutId) {
-        clearTimeout(stopTimeoutId);
-        stopTimeoutId = null;
+export function startEvaluation(type) {
+    const state = getState(type);
+    if (state.isEvaluating) return;
+
+    if (state.stopTimeoutId) {
+        clearTimeout(state.stopTimeoutId);
+        state.stopTimeoutId = null;
     }
 
-    isEvaluating = true;
-    evaluationData = [];
-    evaluationBuffer = [];
-    startTime = performance.now();
+    state.isEvaluating = true;
+    state.data = [];
+    state.buffer = [];
+    state.startTime = performance.now();
+    state.flushIntervalId = setInterval(() => flushBuffer(type), FLUSH_INTERVAL);
 
-    flushIntervalId = setInterval(flushBuffer, FLUSH_INTERVAL);
-
-    console.log("Evaluation started.");
-    // UIの更新
-    document.getElementById('evaluationStatus').textContent = '評価中...';
-    document.getElementById('startEvaluationBtn').disabled = true;
-    document.getElementById('stopEvaluationBtn').disabled = false;
-    document.getElementById('downloadCsvBtn').disabled = true;
+    console.log(`Evaluation for '${type}' started.`);
+    // UIの更新 (IDを動的に指定)
+    document.getElementById(`${type}EvaluationStatus`).textContent = '評価中...';
+    document.getElementById(`start${capitalize(type)}EvaluationBtn`).disabled = true;
+    document.getElementById(`stop${capitalize(type)}EvaluationBtn`).disabled = false;
+    document.getElementById(`download${capitalize(type)}CsvBtn`).disabled = true;
 }
 
 /**
  * 評価を停止する
+ * @param {string} type - 評価のタイプ
  */
-export function stopEvaluation() {
-    if (!isEvaluating && !stopTimeoutId) return;
+export function stopEvaluation(type) {
+    const state = getState(type);
+    if (!state.isEvaluating && !state.stopTimeoutId) return;
 
-    // ★★★ 最終解決ロジック ★★★
-    // 1. UIを「最終処理中...」の状態にし、ユーザーが連続でボタンを押せないようにする
-    document.getElementById('evaluationStatus').textContent = '最終処理中...';
-    document.getElementById('stopEvaluationBtn').disabled = true;
+    const statusEl = document.getElementById(`${type}EvaluationStatus`);
+    const stopBtn = document.getElementById(`stop${capitalize(type)}EvaluationBtn`);
+    const startBtn = document.getElementById(`start${capitalize(type)}EvaluationBtn`);
+    const downloadBtn = document.getElementById(`download${capitalize(type)}CsvBtn`);
 
-    // 2. 最後のデータがネットワーク経由で到着するのを待つための待機時間を設ける
-    stopTimeoutId = setTimeout(() => {
-        // 3. 待機時間が経過した後、記録を完全に停止する
-        isEvaluating = false;
-        if (flushIntervalId) {
-            clearInterval(flushIntervalId);
-            flushIntervalId = null;
+    statusEl.textContent = '最終処理中...';
+    stopBtn.disabled = true;
+
+    state.stopTimeoutId = setTimeout(() => {
+        state.isEvaluating = false;
+        if (state.flushIntervalId) {
+            clearInterval(state.flushIntervalId);
+            state.flushIntervalId = null;
         }
+        flushBuffer(type);
 
-        // 4. バッファに残っている最後のデータを完全に整理する
-        flushBuffer();
+        const hasData = state.data.length > 0;
+        console.log(`Evaluation for '${type}' stopped. Total records: ${state.data.length}. Download enabled: ${hasData}`);
 
-        // 5. すべてのデータが確定した状態で、記録が1件以上あるかを確認
-        const hasData = evaluationData.length > 0;
-
-        console.log(`Evaluation stopped. Total records: ${evaluationData.length}. Download enabled: ${hasData}`);
-
-        // 6. 最終的なUI状態を確定させる
-        document.getElementById('evaluationStatus').textContent = '評価停止中';
-        document.getElementById('startEvaluationBtn').disabled = false;
-        document.getElementById('downloadCsvBtn').disabled = !hasData;
-        stopTimeoutId = null;
-
+        statusEl.textContent = '評価停止中';
+        startBtn.disabled = false;
+        downloadBtn.disabled = !hasData;
+        state.stopTimeoutId = null;
     }, FINALIZATION_WAIT_TIME);
 }
 
 /**
  * 追跡データをバッファに記録する
+ * @param {string} type - 評価のタイプ
+ * @param {object} data - 記録するデータ
  */
-export function logData(data) {
-    if (!isEvaluating) return;
-    const timestamp = (performance.now() - startTime) / 1000.0;
-    evaluationBuffer.push({ timestamp, ...data });
+export function logData(type, data) {
+    const state = getState(type);
+    if (!state.isEvaluating) return;
+    const timestamp = (performance.now() - state.startTime) / 1000.0;
+    state.buffer.push({ timestamp, ...data });
 }
 
 /**
  * 記録したデータをCSV形式でダウンロードする
+ * @param {string} type - 評価のタイプ
  */
-export function downloadCSV() {
-    flushBuffer();
+export function downloadCSV(type) {
+    const state = getState(type);
+    flushBuffer(type);
 
-    if (evaluationData.length === 0) {
+    if (state.data.length === 0) {
         alert("データが記録されていません。");
         return;
     }
 
-    const header = Object.keys(evaluationData[0]).join(',');
-    const rows = evaluationData.map(row => Object.values(row).join(',')).join('\n');
+    const header = Object.keys(state.data[0]).join(',');
+    const rows = state.data.map(row => Object.values(row).join(',')).join('\n');
     const csvContent = `${header}\n${rows}`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `tracking_evaluation_${new Date().toISOString()}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `evaluation_${type}_${new Date().toISOString()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// 文字列の最初の文字を大文字に変換するヘルパー関数
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
