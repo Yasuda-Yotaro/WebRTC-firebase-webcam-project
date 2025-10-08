@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebRTC webcam</title> 
+  <script type="module" crossorigin src="/WebRTC-firebase-Webcam/assets/index-beYsDAe5.js"></script>
+  <link rel="stylesheet" crossorigin href="/WebRTC-firebase-Webcam/assets/index-BRGTLW-w.css">
+</head>
+<body>
+  <div>
+    <label><input type="radio" name="role" value="sender" checked>送信</label>
+    <label><input type="radio" name="role" value="receiver">受信</label>
+  </div>
+
+  <div id="senderControls" style="display: block;">
+    <div>
+        <label for="cameraCount">カメラ台数:</label>
+        <select id="cameraCount">
+          <option value="1">1台</option>
+          <option value="2" selected>2台</option>
+        </select>
+    </div>
+    <div>
+      <label for="cameraSelect1">カメラ選択 1:</label>
+      <select id="cameraSelect1"></select>
+    </div>
+    <div id="cameraSelect2Container">
+      <label for="cameraSelect2">カメラ選択 2:</label>
+      <select id="cameraSelect2"></select>
+    </div>
+
+    <label for="resolution">解像度:</label>
+    <select id="resolution">
+      <option value="vga">640x360</option>
+      <option value="qhd">960x540</option>
+      <option value="hd">1280x720</option>
+      <option value="fhd">1920x1080</option>
+      <option value="fourK">3840x2160</option>
+    </select>
+
+    <label for="framerate">フレームレート:</label>
+    <select id="framerate">
+      <option value="15">15 fps</option>
+      <option value="25">25 fps</option>
+      <option value="30">30 fps</option>
+      <option value="50">50 fps</option>
+      <option value="60">60 fps</option>
+    </select>
+
+    <label for="codecSelect">コーデック:</label>
+    <select id="codecSelect">
+      <option value="VP8">VP8</option>
+      <option value="VP9">VP9</option>
+      <option value="H264">H264</option>
+      <option value="AV1">AV1</option>
+    </select>
+
+    <button id="startCamera">カメラ開始 & 通話作成</button>
+
+    <div id="arucoControls" style="display: none; margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+      <h4>ArUcoマーカー追跡</h4>
+      <label>対象カメラ:
+        <select id="arucoTargetSelect">
+          <option value="camera1">カメラ 1</option>
+          <option value="camera2">カメラ 2</option>
+        </select>
+      </label>
+      <button id="startArucoTrackingBtn">追跡開始</button>
+      <button id="stopArucoTrackingBtn" disabled>追跡停止</button>
+      <span id="arucoTrackingStatus"></span>
+      <div id="evaluationControl" class="control-section">
+        <h3>追跡評価</h3>
+        <p>ステータス: <span id="evaluationStatus">評価停止中</span></p>
+        <button id="startEvaluationBtn">評価開始</button>
+        <button id="stopEvaluationBtn" disabled>評価停止</button>
+        <button id="downloadCsvBtn" disabled>CSVダウンロード</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="receiverControls" style="display: none;">
+    <input id="callIdInput" placeholder="Call ID を入力" />
+    <button id="joinCall">通話に参加</button>
+
+    <div id="ptzControls" style="display: none; margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+      <h4>PTZ 操作 (矢印:パン/チルト, +/-:ズーム, R:リセット)</h4>
+      <div id="ptzTargetSelector">
+        <label><input type="radio" name="ptzTarget" value="camera1" checked> カメラ 1</label>
+        <label id="ptzTargetCamera2Label"><input type="radio" name="ptzTarget" value="camera2"> カメラ 2</label>
+      </div>
+      <div>
+        <strong>ズーム:</strong>
+        <button id="zoomOutBtn">-</button>
+        <input type="range" id="zoomSlider" style="width: 150px; vertical-align: middle;">
+        <button id="zoomInBtn">+</button>
+        <span id="zoomValue" style="font-family: monospace;"></span>
+      </div>
+      <div style="margin-top: 5px;">
+        <strong>チルト:</strong>
+        <button id="tiltDownBtn">↓</button>
+        <input type="range" id="tiltSlider" style="width: 150px; vertical-align: middle;">
+        <button id="tiltUpBtn">↑</button>
+        <span id="tiltValue" style="font-family: monospace;"></span>
+      </div>
+      <div style="margin-top: 5px;">
+        <strong>パン:</strong>
+        <button id="panLeftBtn">←</button>
+        <input type="range" id="panSlider" style="width: 150px; vertical-align: middle;">
+        <button id="panRightBtn">→</button>
+        <span id="panValue" style="font-family: monospace;"></span>
+      </div>
+      <button id="ptzResetBtn" style="margin-top: 10px;">リセット</button>
+    </div>
+  </div>
+  
+  <div id="callControls" style="display: none;">
+      <strong>Call ID:</strong> <span id="callIdDisplay"></span>
+      <button id="copyCallId">コピー</button>
+      <button id="hangUpBtn" style="margin-left: 20px; background-color: #ff4d4d; color: white;">通話を切る</button>
+  </div>
+
+  <div id="videoArea">
+      <div class="video-container">
+        <video id="localVideo1" autoplay playsinline muted></video>
+        <video id="localVideo2" autoplay playsinline muted></video>
+      </div>
+      <div class="video-container">
+        <div id="remoteVideoContainer1">
+            <video id="remoteVideo1" autoplay playsinline></video>
+            <div id="resolutionDisplay1"></div>
+            <button id="fullscreenBtn1">フルスクリーン</button>
+            <div class="recording-controls">
+                <button id="startRecording1">録画開始 1</button>
+                <button id="stopRecording1" disabled>録画停止 1</button>
+                <button id="downloadVideo1" disabled>ダウンロード 1</button>
+                <span id="recordingStatus1"></span>
+            </div>
+        </div>
+        <div id="remoteVideoContainer2">
+            <video id="remoteVideo2" autoplay playsinline></video>
+            <div id="resolutionDisplay2"></div>
+            <button id="fullscreenBtn2">フルスクリーン</button>
+            <div class="recording-controls">
+                <button id="startRecording2">録画開始 2</button>
+                <button id="stopRecording2" disabled>録画停止 2</button>
+                <button id="downloadVideo2" disabled>ダウンロード 2</button>
+                <span id="recordingStatus2"></span>
+            </div>
+        </div>
+      </div>
+  </div>
+
+  <div id="statsControls" style="display: none;">
+    <h3>統計情報記録</h3>
+    <button id="startStatsRecording">記録開始</button>
+    <button id="stopStatsRecording" disabled>記録停止</button>
+    <button id="downloadStats" disabled>CSVダウンロード</button>
+    <div id="statsDisplay"></div>
+  </div>
+
+      
+  <script defer src="opencv.js"></script>
+</body>
+</html>
