@@ -1,0 +1,21 @@
+{
+  "name": "insta360-project",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "preview": "vite preview",
+    "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.3.0",
+    "vite": "^7.0.0"
+  },
+  "dependencies": {
+    "firebase": "^11.10.0",
+    "webm-duration-fix": "^1.0.4"
+  }
+}

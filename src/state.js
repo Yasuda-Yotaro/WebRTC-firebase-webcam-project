@@ -1,0 +1,45 @@
+// state.js
+
+// 状態を保持する変数群
+export let peerConnection;
+export let localStreams = [];
+export let callDocRef;
+export let ptzChannel;
+export let ptzCapabilities = {};
+export let videoTracks = {};
+export let remoteTracks = {};
+export let statsInterval;
+export let recordedStats = [];
+export let isRecordingStats = false;
+export let currentRole = "sender";
+export let lastStatsReport = null;
+export let resolutionUpdateInterval = null;
+export let activePtzTarget = 'camera1';
+export let clockOffset = 0;
+
+// 録画関連の状態
+export let mediaRecorders = { camera1: null, camera2: null };
+export let recordedChunks = { camera1: [], camera2: [] };
+export let isRecording = { camera1: false, camera2: false };
+
+
+// 状態を変更するための関数群
+export function setPeerConnection(pc) { peerConnection = pc; }
+export function setLocalStreams(streams) { localStreams = streams; }
+export function setCallDocRef(ref) { callDocRef = ref; }
+export function setPtzChannel(channel) { ptzChannel = channel; }
+export function setPtzCapabilities(capabilities) { ptzCapabilities = capabilities; }
+export function setVideoTracks(tracks) { videoTracks = tracks; }
+export function setRemoteTracks(tracks) { remoteTracks = tracks; }
+export function setStatsInterval(interval) { statsInterval = interval; }
+export function setRecordedStats(stats) { recordedStats = stats; }
+export function setIsRecordingStats(isRecording) { isRecordingStats = isRecording; }
+export function setCurrentRole(role) { currentRole = role; }
+export function setLastStatsReport(report) { lastStatsReport = report; }
+export function setResolutionUpdateInterval(interval) { resolutionUpdateInterval = interval; }
+export function setActivePtzTarget(target) { activePtzTarget = target; }
+export function setMediaRecorder(target, recorder) { mediaRecorders[target] = recorder; }
+export function setRecordedChunks(target, chunks) { recordedChunks[target] = chunks; }
+export function setIsRecording(target, recording) { isRecording[target] = recording; }
+export function setClockOffset(offset) { clockOffset = offset;}
+export function getClockOffset() {return clockOffset;}
