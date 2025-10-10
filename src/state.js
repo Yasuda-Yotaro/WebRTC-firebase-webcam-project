@@ -16,6 +16,7 @@ export let lastStatsReport = null;
 export let resolutionUpdateInterval = null;
 export let activePtzTarget = 'camera1';
 
+
 // 録画関連の状態
 export let mediaRecorders = { camera1: null, camera2: null };
 export let recordedChunks = { camera1: [], camera2: [] };

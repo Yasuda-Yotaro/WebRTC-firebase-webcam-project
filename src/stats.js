@@ -122,7 +122,7 @@ function populateSenderStats(stats, dataToRecord) {
         dataToRecord.connection_type = connectionTypeValue;  // 接続タイプを数値で保存
       }
     }
-    // ----- ▼ データチャネル統計情報の収集を修正 ▼ -----
+    
     if (report.type === 'data-channel') {
       const lastDataChannelReport = state.lastStatsReport?.get(report.id);
       const bytesSent = report.bytesSent - (lastDataChannelReport?.bytesSent ?? 0);
@@ -136,7 +136,7 @@ function populateSenderStats(stats, dataToRecord) {
       dataToRecord[`datachannel_${report.label}_sent_bitrate_kbps`] = Math.round((Math.max(0, bytesSent) * 8) / 1000); // 1秒ごとの送信ビットレート
       dataToRecord[`datachannel_${report.label}_received_bitrate_kbps`] = Math.round((Math.max(0, bytesReceived) * 8) / 1000); // 1秒ごとの受信ビットレート
     }
-    // ----- ▲ データチャネル統計情報の収集を修正 ▲ -----
+    
   });
 }
 
