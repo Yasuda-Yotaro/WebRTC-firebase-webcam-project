@@ -272,7 +272,6 @@ export async function startCall() {
 
     uiElements.callIdDisplay.textContent = callRef.id; // 画面にCall IDを表示
     uiElements.callControls.style.display = "block";
-    uiElements.arucoControls.style.display = "block";
     
     // Firestoreの通話ドキュメントにanswerが追加されたら、それを取得してPeerConnectionのリモート設定として適用
     onSnapshot(callRef, snapshot => {

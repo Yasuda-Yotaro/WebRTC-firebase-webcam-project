@@ -55,30 +55,35 @@
       <option value="H265">H265</option>
       <option value="AV1">AV1</option>
     </select>
-
-    <button id="startCamera">カメラ開始 & 通話作成</button>
-
-    <div id="arucoControls" style="display: none; margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
-      <h4>ArUcoマーカー追跡</h4>
-      <label>対象カメラ:
-        <select id="arucoTargetSelect">
-          <option value="camera1">カメラ 1</option>
-          <option value="camera2">カメラ 2</option>
-        </select>
-      </label>
-      <button id="startArucoTrackingBtn">追跡開始</button>
-      <button id="stopArucoTrackingBtn" disabled>追跡停止</button>
-      <span id="arucoTrackingStatus"></span>
-      <div id="evaluationControl" class="control-section">
-        <h3>追跡評価</h3>
-        <p>ステータス: <span id="evaluationStatus">評価停止中</span></p>
-        <button id="startEvaluationBtn">評価開始</button>
-        <button id="stopEvaluationBtn" disabled>評価停止</button>
-        <button id="downloadCsvBtn" disabled>CSVダウンロード</button>
-      </div>
+    
+    <div style="margin-top: 10px;">
+      <label><input type="checkbox" id="enableArucoCheckbox"> ArUcoマーカー追跡を有効にする</label>
     </div>
 
+    <button id="startCamera">カメラ開始 & 通話作成</button>
+    
   </div>
+
+  <div id="arucoControls" style="display: none; margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+    <h4>ArUcoマーカー追跡</h4>
+    <label>対象カメラ:
+      <select id="arucoTargetSelect">
+        <option value="camera1">カメラ 1</option>
+        <option value="camera2">カメラ 2</option>
+      </select>
+    </label>
+    <button id="startArucoTrackingBtn">追跡開始</button>
+    <button id="stopArucoTrackingBtn" disabled>追跡停止</button>
+    <span id="arucoTrackingStatus"></span>
+    <div id="evaluationControl" class="control-section">
+      <h3>追跡評価</h3>
+      <p>ステータス: <span id="evaluationStatus">評価停止中</span></p>
+      <button id="startEvaluationBtn">評価開始</button>
+      <button id="stopEvaluationBtn" disabled>評価停止</button>
+      <button id="downloadCsvBtn" disabled>CSVダウンロード</button>
+    </div>
+  </div>
+
 
   <div id="receiverControls" style="display: none;">
     <input id="callIdInput" placeholder="Call ID を入力" />

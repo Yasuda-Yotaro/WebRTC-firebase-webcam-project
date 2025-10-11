@@ -38,7 +38,17 @@ function initializeEventListeners() {
     }
   });
 
-  uiElements.startCameraBtn.addEventListener("click", startCall);
+  // 「カメラ開始 & 通話作成」ボタンのイベントリスナー
+  uiElements.startCameraBtn.addEventListener("click", () => {
+    const enableAruco = document.getElementById('enableArucoCheckbox').checked;
+    const arucoControls = document.getElementById('arucoControls');
+
+    // チェックボックスがチェックされている場合のみ、ArUcoコントロールを表示する
+    arucoControls.style.display = enableAruco ? 'block' : 'none';
+    
+    startCall();
+  });
+
   uiElements.joinCallBtn.addEventListener("click", joinCall);
   uiElements.hangUpBtn.addEventListener("click", hangUp);
   
