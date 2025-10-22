@@ -1,9 +1,8 @@
-// src/evaluation.js
+// src/ptz-evaluation.js
 
 let evaluationData = [];
 let evaluationBuffer = [];
 let isEvaluating = false;
-// startTimeは現在使用していませんが、将来の拡張のために残しておきます。
 let startTime = 0;
 let flushIntervalId = null;
 
@@ -25,6 +24,7 @@ function getFormattedTimestamp(date) {
     return `${Y}-${M}-${D} ${h}:${m}:${s}.${ms}`;
 }
 
+
 function flushBuffer() {
     if (evaluationBuffer.length > 0) {
         evaluationData.push(...evaluationBuffer);
@@ -40,11 +40,11 @@ export function startEvaluation() {
     startTime = performance.now();
     flushIntervalId = setInterval(flushBuffer, FLUSH_INTERVAL);
 
-    console.log("Evaluation started.");
-    document.getElementById('evaluationStatus').textContent = '評価中...';
-    document.getElementById('startEvaluationBtn').disabled = true;
-    document.getElementById('stopEvaluationBtn').disabled = false;
-    document.getElementById('downloadCsvBtn').disabled = true;
+    console.log("PTZ Latency evaluation started.");
+    document.getElementById('ptzEvaluationStatus').textContent = '評価中...';
+    document.getElementById('startPtzEvaluationBtn').disabled = true;
+    document.getElementById('stopPtzEvaluationBtn').disabled = false;
+    document.getElementById('downloadPtzCsvBtn').disabled = true;
 }
 
 export function stopEvaluation() {
@@ -56,11 +56,11 @@ export function stopEvaluation() {
     }
     flushBuffer();
 
-    console.log("Evaluation stopped.");
-    document.getElementById('evaluationStatus').textContent = '評価停止中';
-    document.getElementById('startEvaluationBtn').disabled = false;
-    document.getElementById('stopEvaluationBtn').disabled = true;
-    document.getElementById('downloadCsvBtn').disabled = evaluationData.length === 0;
+    console.log("PTZ Latency evaluation stopped.");
+    document.getElementById('ptzEvaluationStatus').textContent = '評価停止中';
+    document.getElementById('startPtzEvaluationBtn').disabled = false;
+    document.getElementById('stopPtzEvaluationBtn').disabled = true;
+    document.getElementById('downloadPtzCsvBtn').disabled = evaluationData.length === 0;
 }
 
 /**
@@ -69,6 +69,7 @@ export function stopEvaluation() {
  */
 export function logData(data) {
     if (!isEvaluating) return;
+    // ★★★ 変更点：経過時間ではなく、フォーマットされた現在時刻を記録 ★★★
     const timestamp = getFormattedTimestamp(new Date());
     evaluationBuffer.push({ timestamp, ...data });
 }
@@ -86,6 +87,7 @@ export function downloadCSV() {
             if (typeof value === 'number') {
                 return value.toFixed(3);
             }
+            // タイムスタンプは文字列なので、そのまま表示
             return value;
         }).join(',');
     }).join('\n');
@@ -96,7 +98,7 @@ export function downloadCSV() {
     if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `tracking_evaluation_${new Date().toISOString()}.csv`);
+        link.setAttribute("download", `ptz_latency_evaluation_${new Date().toISOString()}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

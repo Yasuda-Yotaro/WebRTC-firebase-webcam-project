@@ -39,6 +39,9 @@ export const stopStatsRecordingBtn = document.getElementById("stopStatsRecording
 export const downloadStatsBtn = document.getElementById("downloadStats");
 export const statsDisplay = document.getElementById("statsDisplay");
 
+// PSNR CSVダウンロードボタン
+export const downloadPsnrCsvBtn = document.getElementById("downloadPsnrCsvBtn");
+
 // PTZ-related elements
 export const zoomInBtn = document.getElementById("zoomInBtn");
 export const zoomOutBtn = document.getElementById("zoomOutBtn");

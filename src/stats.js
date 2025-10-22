@@ -291,3 +291,56 @@ export function downloadStatsAsCsv() {
   document.body.removeChild(link); // ダウンロードが始まったら、不要になったリンクをページから削除
   URL.revokeObjectURL(url); // 作成した一時URLを解放して、メモリを節約
 }
+
+// PSNR計測用
+let psnrResults = [];
+let psnrInterval = null;
+
+export function startPSNRRecording(localCanvas, remoteCanvas) {
+  psnrResults = [];
+  if (psnrInterval) clearInterval(psnrInterval);
+  psnrInterval = setInterval(() => {
+    const psnr = calculatePSNRWithOpenCV(localCanvas, remoteCanvas);
+    if (psnr !== null) {
+      psnrResults.push({ timestamp: Date.now(), psnr });
+    }
+  }, 1000); // 1秒ごと
+}
+
+export function stopPSNRRecording() {
+  if (psnrInterval) {
+    clearInterval(psnrInterval);
+    psnrInterval = null;
+  }
+}
+
+function calculatePSNRWithOpenCV(canvas1, canvas2) {
+  if (!window.cv) return null;
+  let mat1 = cv.imread(canvas1);
+  let mat2 = cv.imread(canvas2);
+  let psnr = cv.PSNR(mat1, mat2);
+  mat1.delete();
+  mat2.delete();
+  return psnr;
+}
+
+export function getPSNRResults() {
+  return psnrResults;
+}
+
+export function downloadPSNRResultsCsv() {
+  if (!psnrResults.length) return;
+  let csv = 'timestamp,psnr\n';
+  psnrResults.forEach(r => {
+    csv += `${r.timestamp},${r.psnr}\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'psnr_results.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
