@@ -39,9 +39,6 @@ export const stopStatsRecordingBtn = document.getElementById("stopStatsRecording
 export const downloadStatsBtn = document.getElementById("downloadStats");
 export const statsDisplay = document.getElementById("statsDisplay");
 
-// PSNR CSVダウンロードボタン
-export const downloadPsnrCsvBtn = document.getElementById("downloadPsnrCsvBtn");
-
 // PTZ-related elements
 export const zoomInBtn = document.getElementById("zoomInBtn");
 export const zoomOutBtn = document.getElementById("zoomOutBtn");
@@ -77,3 +74,9 @@ export const arucoTargetSelect = document.getElementById("arucoTargetSelect");
 export const startArucoTrackingBtn = document.getElementById("startArucoTrackingBtn");
 export const stopArucoTrackingBtn = document.getElementById("stopArucoTrackingBtn");
 export const arucoTrackingStatus = document.getElementById("arucoTrackingStatus");
+
+// IMU control elements
+export const enableImuCheckbox = document.getElementById('enableImuCheckbox');
+export const connectImuBtn = document.getElementById('connectImuBtn');
+export const disconnectImuBtn = document.getElementById('disconnectImuBtn');
+export const calibrateImuBtn = document.getElementById('calibrateImuBtn');

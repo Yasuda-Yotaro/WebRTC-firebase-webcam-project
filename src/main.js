@@ -5,23 +5,17 @@ import * as uiElements from './ui-elements.js';
 import * as state from './state.js';
 import { startCall, joinCall, hangUp } from './webrtc.js';
 import { sendPtzCommand, updateReceiverPtzControls, sendUnmeasuredPtzCommand } from './ptz.js';
-import { startStatsRecording, stopStatsRecording, downloadStatsAsCsv, downloadPSNRResultsCsv, getPSNRResults } from './stats.js';
+import { startStatsRecording, stopStatsRecording, downloadStatsAsCsv } from './stats.js';
 import { startRecording, stopRecording, downloadVideo } from './recording.js';
 import { start as startArucoTracking, stop as stopArucoTracking } from './aruco.js';
 import * as evaluation from './evaluation.js';
+import * as imu from './imu.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
-import { panTilt } from './ptz.js';
 
 /**
  * アプリケーションのすべてのイベントリスナーを初期化する。
  */
 function initializeEventListeners() {
-  // PSNR結果CSVダウンロードボタンの有効化制御
-  function updatePsnrCsvBtnState() {
-    uiElements.downloadPsnrCsvBtn.disabled = getPSNRResults().length === 0;
-  }
-  setInterval(updatePsnrCsvBtnState, 1000); // 1秒ごとに状態更新
-
   uiElements.roleInputs.forEach(input => {
     input.addEventListener("change", (e) => updateRoleUI(e.target.value));
   });
@@ -60,11 +54,6 @@ function initializeEventListeners() {
   uiElements.stopStatsRecordingBtn.addEventListener("click", stopStatsRecording);
   uiElements.downloadStatsBtn.addEventListener("click", downloadStatsAsCsv);
 
-  // PSNR結果CSVダウンロードボタンのイベントリスナー
-  if (uiElements.downloadPsnrCsvBtn) {
-    uiElements.downloadPsnrCsvBtn.addEventListener("click", downloadPSNRResultsCsv);
-  }
-
   // 録画のイベントリスナー
   uiElements.startRecordingBtn1.addEventListener("click", () => startRecording('camera1'));
   uiElements.stopRecordingBtn1.addEventListener("click", () => stopRecording('camera1'));
@@ -100,7 +89,7 @@ function initializeEventListeners() {
   });
 
   const getSliderValue = (type) => parseFloat(document.getElementById(`${type}Slider`).value);
-  const getActiveCaps = () => state.ptzCapabilities[state.activePtzTarget] || {};
+  const getActiveCaps = () => state.ptzCapabilities[state.activePtzTarget] || {}; // 現在のPTZターゲットの能力を取得
 
   /**
    * PTZ操作ボタン（+-）のクリックイベントを設定する関数
@@ -116,12 +105,12 @@ function initializeEventListeners() {
     increaseBtn.addEventListener('click', () => {
       // ユーザーが入力した操作量を取得
       const step = parseFloat(stepInput.value);
-      if (isNaN(step)) return; // 無効な入力の場合は何もしない
+      if (isNaN(step)) return; 
 
       // 現在のスライダーの値に操作量を加算
       const newValue = parseFloat(slider.value) + step;
 
-      // ptz.js の関数を呼び出して、計測対象のコマンドを送信
+      // 計測対象のコマンドを送信
       sendPtzCommand(type, newValue);
     });
 
@@ -129,12 +118,12 @@ function initializeEventListeners() {
     decreaseBtn.addEventListener('click', () => {
       // ユーザーが入力した操作量を取得
       const step = parseFloat(stepInput.value);
-      if (isNaN(step)) return; // 無効な入力の場合は何もしない
+      if (isNaN(step)) return; 
 
       // 現在のスライダーの値から操作量を減算
       const newValue = parseFloat(slider.value) - step;
       
-      // ptz.js の関数を呼び出して、計測対象のコマンドを送信
+      // 計測対象のコマンドを送信
       sendPtzCommand(type, newValue);
     });
   };
@@ -297,117 +286,47 @@ function initializeEventListeners() {
   stopEvaluationBtn.addEventListener('click', evaluation.stopEvaluation);
   downloadCsvBtn.addEventListener('click', evaluation.downloadCSV);
 
-  // PTZ評価コントロールのイベントリスナー
+  // PTZ操作遅延評価のイベントリスナー
   const startPtzEvaluationBtn = document.getElementById('startPtzEvaluationBtn');
   const stopPtzEvaluationBtn = document.getElementById('stopPtzEvaluationBtn');
   const downloadPtzCsvBtn = document.getElementById('downloadPtzCsvBtn');
   startPtzEvaluationBtn.addEventListener('click', ptzEvaluation.startEvaluation);
   stopPtzEvaluationBtn.addEventListener('click', ptzEvaluation.stopEvaluation);
   downloadPtzCsvBtn.addEventListener('click', ptzEvaluation.downloadCSV);
+
+  // IMU関連イベント
+  if (uiElements.connectImuBtn && uiElements.disconnectImuBtn && uiElements.enableImuCheckbox) {
+    uiElements.connectImuBtn.addEventListener('click', () => {
+      imu.connectImu(); 
+      imu.configureImu({ panSign: -1, tiltSign: 1 });
+      uiElements.connectImuBtn.disabled = true;
+      uiElements.disconnectImuBtn.disabled = false;
+    });
+
+    uiElements.disconnectImuBtn.addEventListener('click', () => {
+      imu.disconnectImu();
+      uiElements.connectImuBtn.disabled = false;
+      uiElements.disconnectImuBtn.disabled = true;
+    });
+
+    uiElements.enableImuCheckbox.addEventListener('change', (e) => {
+      imu.setEnabled(e.target.checked);
+    });
+
+    if (uiElements.calibrateImuBtn) {
+      uiElements.calibrateImuBtn.addEventListener('click', () => {
+        imu.calibrateNow();
+        // キャリブレーション時に現在のアクティブPTZターゲットを中央(0)に戻す
+        const caps = getActiveCaps();
+        if (caps.pan) sendPtzCommand('pan', 0);
+        if (caps.tilt) sendPtzCommand('tilt', 0);
+      });
+    }
+    
+  }
 }
 
 // 初期化処理の実行
 updateRoleUI(document.querySelector('input[name="role"]:checked').value);
 initializeEventListeners();
 populateCameraList();
-
-// =================================================================
-// ▼▼▼ PhoenixHeadTracker連携コード ▼▼▼
-// =================================================================
-
-// WebSocketサーバーのアドレス
-const WEBSOCKET_URL = "ws://127.0.0.1:8181";
-
-// --- IMUデータの中央位置を保持する変数 ---
-// これを基準にカメラを動かします
-let centerYaw = 0;
-let centerPitch = 0;
-let isCenterSet = false; // 中央位置が設定されたかどうかのフラグ
-
-// --- カメラ操作の感度 ---
-// この数値が大きいほど、少しの頭の動きでカメラが大きく動きます
-const SENSITIVITY = 1.5;
-
-// --- カメラを動かすための設定 ---
-// どのくらいの頻度でカメラ制御命令を送るか (ミリ秒)
-const PTZ_INTERVAL = 100; // 100ms = 1秒に10回
-let lastPtzTime = 0;
-
-console.log("IMU WebSocketクライアントを初期化します...");
-
-const socket = new WebSocket(WEBSOCKET_URL);
-
-// --- 接続が開いたときの処理 ---
-socket.onopen = (e) => {
-    console.log("[WebSocket] 接続が確立されました。");
-    console.log("キーボードの 'C' キーを押して、頭の正面位置をキャリブレーションしてください。");
-};
-
-// --- サーバーからメッセージを受信したときの処理 ---
-socket.onmessage = (event) => {
-    try {
-        const imuData = JSON.parse(event.data);
-        const { yaw, pitch } = imuData;
-
-        // 中央位置が未設定の場合は何もしない
-        if (!isCenterSet) {
-            return;
-        }
-
-        // --- 現在の時刻が、前回の命令送信から指定時間以上経過した場合のみ処理 ---
-        const now = Date.now();
-        if (now - lastPtzTime < PTZ_INTERVAL) {
-            return;
-        }
-        lastPtzTime = now;
-
-        // --- 中央位置からの差分を計算 ---
-        // Yawは左右の動き (Pan)、Pitchは上下の動き (Tilt) に対応させます
-        // 符号を反転させて、頭の動きとカメラの動きが直感的になるように調整
-        const panAmount = (yaw - centerYaw) * -SENSITIVITY;
-        const tiltAmount = (pitch - centerPitch) * SENSITIVITY;
-
-        // --- panTilt関数を呼び出してカメラを操作 ---
-        // panTilt(pan, tilt) tiltは上下逆なので-1をかける
-        panTilt(panAmount, tiltAmount * -1);
-
-    } catch (error) {
-        console.error("WebSocketメッセージの処理中にエラーが発生しました:", error);
-    }
-};
-
-
-// --- 接続が閉じたときの処理 ---
-socket.onclose = (event) => {
-    if (event.wasClean) {
-        console.log(`[WebSocket] 接続が正常にクローズされました。`);
-    } else {
-        console.error('[WebSocket] 接続が予期せず切断されました。');
-    }
-    isCenterSet = false; // 接続が切れたら中央位置をリセット
-};
-
-// --- エラーが発生したときの処理 ---
-socket.onerror = (error) => {
-    console.error(`[WebSocket] エラー: ${error.message}`);
-    alert("PhoenixHeadTrackerとのWebSocket接続に失敗しました。アプリが起動しているか確認してください。");
-};
-
-
-// --- 'C'キーで中央位置をキャリブレーションする機能 ---
-window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'c') {
-        // 'c'キーが押されたら、現在の受信データを中央として設定
-        isCenterSet = false; // 一時的に無効化
-        const tempSocket = new WebSocket(WEBSOCKET_URL);
-        
-        tempSocket.onmessage = (event) => {
-             const imuData = JSON.parse(event.data);
-             centerYaw = imuData.yaw;
-             centerPitch = imuData.pitch;
-             isCenterSet = true;
-             console.log(`中央位置をリセットしました: Yaw=${centerYaw.toFixed(2)}, Pitch=${centerPitch.toFixed(2)}`);
-             tempSocket.close(); // 1回だけ取得したら接続を切る
-        };
-    }
-});

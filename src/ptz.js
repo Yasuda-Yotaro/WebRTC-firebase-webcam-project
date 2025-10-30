@@ -4,6 +4,12 @@ import * as state from './state.js';
 import * as uiElements from './ui-elements.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
 
+/**
+ * @param {string} target - PTZ操作の対象カメラ（例: 'camera1'）
+ * @param {string} type - PTZ操作の種類（例: 'pan', 'tilt', 'zoom'）
+ * @param {number} value - PTZの値
+ */
+
 // 計測中のコマンドIDと開始時刻を保存するためのマップ
 const pendingPtzCommands = new Map();
 
@@ -42,7 +48,7 @@ const confirmationManager = {
             const settings = track.getSettings(); // getSettings()：トラックの現在の設定を取得
             const capabilities = track.getCapabilities(); // getCapabilities()：トラックのサポートされている機能を取得
             let allFinished = true; // すべてのコマンドが完了したかどうかを追跡するためのフラグ
-            let timedOut = elapsedTime >= maxDuration; // タイムアウト判定
+            let timedOut = elapsedTime >= maxDuration; // タイムアウト判定(true/false)
 
             for (const cmdType in pendingCmds) {
                 const currentValue = settings[cmdType]; // 現在のカメラ設定値
@@ -90,16 +96,51 @@ const confirmationManager = {
 
 
 export async function applyPtzConstraint(target, type, value) {
-  const track = state.videoTracks[target]; // 対象のカメラのトラックを取得
-  if (document.visibilityState !== 'visible' || !track || track.readyState !== 'live') {
-    console.warn(`SENDER: Cannot apply PTZ to ${target}. Page not visible or track not live.`);
-    return; // 条件を満たさない場合は処理を中断
-  }
-  try {
-    await track.applyConstraints({ advanced: [{ [type]: value }] }); // PTZ制約を適用 advanced：複数の制約をリスト形式で指定できるプロパティ
-  } catch (err) {
-    console.error(`SENDER: Error applying ${type} constraint to ${target}:`, err); // エラー処理
-  }
+    // 高頻度コールをまとめる
+    if (!applyPtzConstraint._state) {
+        applyPtzConstraint._state = {
+            lastApply: 0,
+            delay: 50, // ms
+            pending: {} // { '<target>#<type>': { target, type, value } }
+        };
+    }
+    const s = applyPtzConstraint._state;
+    const key = `${target}#${type}`;
+    s.pending[key] = { target, type, value };
+
+    const doApply = async (entry) => {
+        const track = state.videoTracks[entry.target];
+        if (document.visibilityState !== 'visible' || !track || track.readyState !== 'live') {
+            console.warn(`SENDER: Cannot apply PTZ to ${entry.target}. Page not visible or track not live.`);
+            return;
+        }
+        try {
+            await track.applyConstraints({ advanced: [{ [entry.type]: entry.value }] });
+        } catch (err) {
+            console.error(`SENDER: Error applying ${entry.type} constraint to ${entry.target}:`, err);
+        }
+    };
+
+    const now = performance.now();
+    if (now - s.lastApply >= s.delay) {
+        // すぐに適用するべき最新のエントリを取得
+        const entries = Object.values(s.pending);
+        s.pending = {};
+        s.lastApply = now;
+        entries.forEach(e => doApply(e));
+    } else {
+        // 既にタイマーがある場合は何もしない。タイマーでまとめて送る
+        if (!s._timer) {
+            const remaining = s.delay - (now - s.lastApply);
+            s._timer = setTimeout(() => {
+                s._timer = null;
+                const entries = Object.values(s.pending);
+                s.pending = {};
+                s.lastApply = performance.now();
+                entries.forEach(e => doApply(e));
+            }, remaining);
+        }
+    }
 }
 
 // PTZ操作に関するUIを更新する関数

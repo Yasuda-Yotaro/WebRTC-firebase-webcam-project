@@ -73,7 +73,6 @@ function createPeerConnection() {
 
     if (!isConnected) {
       stopStatsRecording();
-      // 接続が切れたら録画も停止
       stopRecording('camera1');
       stopRecording('camera2');
     }

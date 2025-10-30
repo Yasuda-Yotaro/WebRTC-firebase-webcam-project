@@ -1,16 +1,16 @@
 // state.js
 
-// 状態を保持する変数群
-export let peerConnection;
-export let localStreams = [];
-export let callDocRef;
-export let ptzChannel;
-export let ptzCapabilities = {};
-export let videoTracks = {};
-export let remoteTracks = {};
-export let statsInterval;
-export let recordedStats = [];
-export let isRecordingStats = false;
+// 状態を保持する変数
+export let peerConnection; // RTCPeerConnectionオブジェクト
+export let localStreams = []; // ローカルのメディアストリーム配列
+export let callDocRef; // Firestoreの通話ドキュメント参照
+export let ptzChannel; // PTZ制御用のデータチャネル
+export let ptzCapabilities = {}; // PTZカメラの制御能力情報
+export let videoTracks = {}; // ビデオトラック情報
+export let remoteTracks = {}; // リモートトラック情報
+export let statsInterval; // 情報収集のインターバル
+export let recordedStats = []; // 録画されたスタッツ
+export let isRecordingStats = false; // 録画中かのフラグ
 export let currentRole = "sender";
 export let lastStatsReport = null;
 export let resolutionUpdateInterval = null;
@@ -23,7 +23,7 @@ export let recordedChunks = { camera1: [], camera2: [] };
 export let isRecording = { camera1: false, camera2: false };
 
 
-// 状態を変更するための関数群
+// 状態を変更するための関数
 export function setPeerConnection(pc) { peerConnection = pc; }
 export function setLocalStreams(streams) { localStreams = streams; }
 export function setCallDocRef(ref) { callDocRef = ref; }

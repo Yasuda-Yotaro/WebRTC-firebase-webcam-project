@@ -4,7 +4,7 @@ import * as state from './state.js';
 import * as uiElements from './ui-elements.js';
 
 /**
- * 定期的に受信映像の解像度を取得して表示を更新する。
+ * 定期的に受信映像の解像度を取得して表示を更新
  */
 export async function updateResolutionDisplay() {
   if (!state.peerConnection || state.currentRole !== 'receiver' || state.peerConnection.connectionState !== 'connected') {
@@ -179,7 +179,6 @@ function populateReceiverStats(stats, dataToRecord) {
         dataToRecord.connection_type = remoteCandidate.candidateType;
       }
     }
-    // ----- ▼ データチャネル統計情報の収集を修正 ▼ -----
     if (report.type === 'data-channel') {
         const lastDataChannelReport = state.lastStatsReport?.get(report.id);
         const bytesSent = report.bytesSent - (lastDataChannelReport?.bytesSent ?? 0);
@@ -193,7 +192,6 @@ function populateReceiverStats(stats, dataToRecord) {
         dataToRecord[`datachannel_${report.label}_sent_bitrate_kbps`] = Math.round((Math.max(0, bytesSent) * 8) / 1000); // 1秒ごとの送信ビットレート
         dataToRecord[`datachannel_${report.label}_received_bitrate_kbps`] = Math.round((Math.max(0, bytesReceived) * 8) / 1000); // 1秒ごとの受信ビットレート
       }
-    // ----- ▲ データチャネル統計情報の収集を修正 ▲ -----
   });
 }
 
@@ -295,16 +293,59 @@ export function downloadStatsAsCsv() {
 // PSNR計測用
 let psnrResults = [];
 let psnrInterval = null;
+let _psnrState = {
+  localCanvas: null,
+  remoteCanvas: null,
+  localCtx: null,
+  remoteCtx: null,
+  localVideoEl: null,
+  remoteVideoEl: null
+};
 
-export function startPSNRRecording(localCanvas, remoteCanvas) {
+// 内部キャンバスを作ってビデオを描画してから OpenCV で計算する
+function createOrResizeCanvas(canvas, width, height) {
+  if (!canvas) return null;
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  return canvas;
+}
+
+export function startPSNRRecordingFromVideos(localVideoEl, remoteVideoEl) {
+  // video 要素から PSNR を計測するための内部 canvas を準備
+  _psnrState.localVideoEl = localVideoEl;
+  _psnrState.remoteVideoEl = remoteVideoEl;
+  _psnrState.localCanvas = document.createElement('canvas');
+  _psnrState.remoteCanvas = document.createElement('canvas');
+
   psnrResults = [];
   if (psnrInterval) clearInterval(psnrInterval);
   psnrInterval = setInterval(() => {
-    const psnr = calculatePSNRWithOpenCV(localCanvas, remoteCanvas);
-    if (psnr !== null) {
-      psnrResults.push({ timestamp: Date.now(), psnr });
+    try {
+      const lv = _psnrState.localVideoEl;
+      const rv = _psnrState.remoteVideoEl;
+      if (!lv || !rv) return;
+      const w = Math.min(lv.videoWidth || 640, rv.videoWidth || 640) || 640;
+      const h = Math.min(lv.videoHeight || 360, rv.videoHeight || 360) || 360;
+      createOrResizeCanvas(_psnrState.localCanvas, w, h);
+      createOrResizeCanvas(_psnrState.remoteCanvas, w, h);
+      // willReadFrequently を true にしてコンテキストを取得（getImageData を多用するため）
+      _psnrState.localCtx = _psnrState.localCanvas.getContext('2d', { willReadFrequently: true });
+      _psnrState.remoteCtx = _psnrState.remoteCanvas.getContext('2d', { willReadFrequently: true });
+      const lctx = _psnrState.localCtx;
+      const rctx = _psnrState.remoteCtx;
+      lctx.drawImage(lv, 0, 0, w, h);
+      rctx.drawImage(rv, 0, 0, w, h);
+
+      const psnr = calculatePSNRWithOpenCV(_psnrState.localCanvas, _psnrState.remoteCanvas);
+      if (psnr !== null) {
+        psnrResults.push({ timestamp: Date.now(), psnr });
+      }
+    } catch (e) {
+      console.error('PSNR calc error:', e);
     }
-  }, 1000); // 1秒ごと
+  }, 1000);
 }
 
 export function stopPSNRRecording() {
@@ -312,16 +353,64 @@ export function stopPSNRRecording() {
     clearInterval(psnrInterval);
     psnrInterval = null;
   }
+  _psnrState.localCanvas = null;
+  _psnrState.remoteCanvas = null;
+  _psnrState.localCtx = null;
+  _psnrState.remoteCtx = null;
+  _psnrState.localVideoEl = null;
+  _psnrState.remoteVideoEl = null;
 }
 
 function calculatePSNRWithOpenCV(canvas1, canvas2) {
-  if (!window.cv) return null;
-  let mat1 = cv.imread(canvas1);
-  let mat2 = cv.imread(canvas2);
-  let psnr = cv.PSNR(mat1, mat2);
-  mat1.delete();
-  mat2.delete();
-  return psnr;
+  // 優先: OpenCV の cv.PSNR が利用可能なら試す
+  if (window.cv) {
+    try {
+      if (typeof cv.PSNR === 'function') {
+        const mat1 = cv.imread(canvas1);
+        const mat2 = cv.imread(canvas2);
+        if (mat1 && mat2) {
+          const psnr = cv.PSNR(mat1, mat2);
+          try { mat1.delete(); } catch (_) {}
+          try { mat2.delete(); } catch (_) {}
+          return psnr;
+        }
+      }
+    } catch (e) {
+      // OpenCV 側で何らかの互換性エラーが発生した場合はフォールバックへ
+      console.warn('OpenCV PSNR attempt failed, falling back to JS implementation:', e);
+    }
+  }
+
+  // フォールバック: canvas のピクセルデータを直接比較して PSNR を計算（RGBA -> RGB）
+  try {
+    if (!canvas1 || !canvas2) return null;
+    const w = canvas1.width;
+    const h = canvas1.height;
+    if (!w || !h || canvas2.width !== w || canvas2.height !== h) return null;
+  // 可能であれば既に作成した willReadFrequently コンテキストを使う
+  const ctx1 = (canvas1 === _psnrState.localCanvas && _psnrState.localCtx) ? _psnrState.localCtx : canvas1.getContext('2d', { willReadFrequently: true });
+  const ctx2 = (canvas2 === _psnrState.remoteCanvas && _psnrState.remoteCtx) ? _psnrState.remoteCtx : canvas2.getContext('2d', { willReadFrequently: true });
+    if (!ctx1 || !ctx2) return null;
+    const d1 = ctx1.getImageData(0, 0, w, h).data;
+    const d2 = ctx2.getImageData(0, 0, w, h).data;
+    let mse = 0.0;
+    const pixelCount = w * h;
+    for (let i = 0; i < pixelCount; i++) {
+      const idx = i * 4;
+      const dr = d1[idx] - d2[idx];
+      const dg = d1[idx + 1] - d2[idx + 1];
+      const db = d1[idx + 2] - d2[idx + 2];
+      mse += dr * dr + dg * dg + db * db;
+    }
+    mse = mse / (pixelCount * 3);
+    if (mse === 0) return 100;
+    const PIXEL_MAX = 255.0;
+    const psnr = 10.0 * Math.log10((PIXEL_MAX * PIXEL_MAX) / mse);
+    return psnr;
+  } catch (e) {
+    console.error('PSNR fallback error:', e);
+    return null;
+  }
 }
 
 export function getPSNRResults() {
