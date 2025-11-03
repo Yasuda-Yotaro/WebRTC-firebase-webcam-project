@@ -216,7 +216,9 @@ export function sendPtzCommand(type, value, options = {}) {
     const command = { type: 'command', target, command: type, value: clampedValue, id: commandId };
 
     try {
-        const effectiveStartTime = options.startTime || performance.now();
+        // Use Date.now() ms epoch for start time so it is compatible with ISO timestamps
+        // coming from external IMU sources (e.g., C# DateTime.UtcNow.ToString("o")).
+        const effectiveStartTime = (options && options.startTime !== undefined) ? options.startTime : Date.now();
         pendingPtzCommands.set(commandId, effectiveStartTime);
 
         state.ptzChannel.send(JSON.stringify(command));
@@ -290,7 +292,8 @@ export function handleReceiverDataChannel(event) {
 
         } else if (msg.type === 'command_ack' && pendingPtzCommands.has(msg.id)) {
             const startTime = pendingPtzCommands.get(msg.id);
-            const ptzLatency = performance.now() - startTime;
+            // startTime is stored as epoch ms (Date.now() or parsed ISO timestamp). Use Date.now() for diff.
+            const ptzLatency = Date.now() - startTime;
             const timedOut = msg.timedOut || false;
 
             console.log(`PTZ Latency (${msg.command}): ${ptzLatency.toFixed(2)} ms, Timed Out: ${timedOut}`);

@@ -96,6 +96,11 @@ function handleImuData(data) {
   if (!vals) return;
 
   const { pitch, yaw } = vals;
+  // IMU may include a timestamp string (ISO 8601) produced by the sender (e.g. C# DateTime.UtcNow.ToString("o")).
+  // Parse it to epoch ms for use as the command startTime. If parsing fails, fall back to Date.now().
+  const imuTimestampStr = data && (data.timestamp || data.time || data.t); // support several possible fields
+  const imuTimestampMs = imuTimestampStr ? Date.parse(imuTimestampStr) : NaN;
+  const commandStartTime = Number.isFinite(imuTimestampMs) ? imuTimestampMs : Date.now();
 
   // pitch/yaw の変化量を PTZ の相対変化に変換する
   const target = state.activePtzTarget || 'camera1';
@@ -158,7 +163,9 @@ function handleImuData(data) {
     const newVal = targetVal;
     // before send: check channel state
     if (state.ptzChannel?.readyState === 'open') {
-      ptz.sendUnmeasuredPtzCommand('tilt', newVal);
+      // send measured command so receiver can compute latency when camera reaches target
+      // pass the IMU timestamp (epoch ms) as startTime so receiver can compute Date.now() - startTime
+      ptz.sendPtzCommand('tilt', newVal, { startTime: commandStartTime });
     } else {
       console.warn('IMU: cannot send tilt - ptzChannel not open');
     }
@@ -169,7 +176,8 @@ function handleImuData(data) {
     const targetVal = current + deltaPanUnits;
     const newVal = targetVal;
     if (state.ptzChannel?.readyState === 'open') {
-      ptz.sendUnmeasuredPtzCommand('pan', newVal);
+      // send measured command so receiver can compute latency when camera reaches target
+      ptz.sendPtzCommand('pan', newVal, { startTime: commandStartTime });
     } else {
       console.warn('IMU: cannot send pan - ptzChannel not open');
     }

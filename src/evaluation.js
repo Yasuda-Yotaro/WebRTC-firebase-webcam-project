@@ -3,7 +3,6 @@
 let evaluationData = [];
 let evaluationBuffer = [];
 let isEvaluating = false;
-// startTimeは現在使用していませんが、将来の拡張のために残しておきます。
 let startTime = 0;
 let flushIntervalId = null;
 
