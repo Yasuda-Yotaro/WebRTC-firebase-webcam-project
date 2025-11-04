@@ -51,7 +51,7 @@ function createPeerConnection() {
     const isConnected = pc.connectionState === 'connected';
     uiElements.statsControls.style.display = isConnected ? 'block' : 'none'; // 接続が確立したら、統計情報の記録を開始するUIを表示
 
-    // 接続が確立したら、統計情報の記録を開始する
+    // 接続が確立したら、統計情報の記録を開始
     if (isConnected) {
       startStatsRecording();
     }
@@ -82,7 +82,7 @@ function createPeerConnection() {
 }
 
 /**
- * SDP（Session Description Protocol）を操作して、すべてのビデオストリームで指定されたコーデックを優先する。
+ * SDP（Session Description Protocol）を操作して、すべてのビデオストリームで指定されたコーデックを用いる。
  * @param {string} sdp - 元のSDP
  * @param {string} codecName - 優先するコーデック名 (e.g., 'H264', 'VP9')
  * @returns {string} 変更されたSDP
@@ -369,5 +369,40 @@ export async function joinCall() {
     ui.resetUI();
   } finally {
     uiElements.joinCallBtn.disabled = false;
+  }
+}
+
+/**
+ * 送信するビデオトラックに対して帯域（kbps）制限を適用する。
+ * RTCRtpSender.getParameters()/setParameters() を用いて encodings[].maxBitrate を設定する。
+ * @param {number} kbps - 適用する最大ビットレート（キロビット毎秒）
+ */
+export async function setVideoBandwidthKbps(kbps) {
+  if (!state.peerConnection) {
+    throw new Error('PeerConnection が存在しません。通話を開始してから帯域を設定してください。');
+  }
+
+  const senders = state.peerConnection.getSenders ? state.peerConnection.getSenders() : [];
+  const videoSenders = senders.filter(s => s.track && s.track.kind === 'video');
+
+  if (videoSenders.length === 0) {
+    console.warn('ビデオ送信者が見つかりません。');
+    return;
+  }
+
+  const bps = Number(kbps) * 1000; // kbps -> bps
+
+  for (const sender of videoSenders) {
+    try {
+      const params = sender.getParameters();
+      if (!params.encodings || params.encodings.length === 0) params.encodings = [{}];
+
+      params.encodings = params.encodings.map(enc => ({ ...enc, maxBitrate: bps }));
+
+      await sender.setParameters(params);
+      console.log(`setParameters による帯域適用: ${kbps} kbps -> ${bps} bps`, sender, params);
+    } catch (err) {
+      console.error('送信者に対する setParameters の適用に失敗しました:', err);
+    }
   }
 }

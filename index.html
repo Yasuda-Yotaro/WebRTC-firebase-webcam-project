@@ -56,6 +56,12 @@
       <option value="H265">H265</option>
     </select>
     
+    <div style="margin-top:6px;">
+      <label for="bandwidthKbpsInput">帯域制限 (kbps):</label>
+      <input type="number" id="bandwidthKbpsInput" min="0" step="100" placeholder="例:1500" style="width:100px;">
+      <button id="applyBandwidthBtn">適用</button>
+    </div>
+
     <div style="margin-top: 10px;">
       <label><input type="checkbox" id="enableArucoCheckbox"> ArUcoマーカー追跡を有効</label>
     </div>

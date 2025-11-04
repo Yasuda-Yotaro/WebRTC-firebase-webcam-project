@@ -3,7 +3,7 @@
 import { updateRoleUI, populateCameraList, updateCameraCountUI } from './ui.js';
 import * as uiElements from './ui-elements.js';
 import * as state from './state.js';
-import { startCall, joinCall, hangUp } from './webrtc.js';
+import { startCall, joinCall, hangUp, setVideoBandwidthKbps } from './webrtc.js';
 import { sendPtzCommand, updateReceiverPtzControls, sendUnmeasuredPtzCommand } from './ptz.js';
 import { startStatsRecording, stopStatsRecording, downloadStatsAsCsv } from './stats.js';
 import { startRecording, stopRecording, downloadVideo } from './recording.js';
@@ -45,6 +45,24 @@ function initializeEventListeners() {
     
     startCall();
   });
+
+  // 帯域制限のイベントリスナー
+  uiElements.applyBandwidthBtn.addEventListener('click', async () => {
+    const val = parseInt(uiElements.bandwidthKbpsInput.value, 10);
+    if (isNaN(val) || val < 0) {
+      alert('帯域（kbps）を正しく入力してください。');
+      return;
+    }
+    try {
+      await setVideoBandwidthKbps(val);
+      // ユーザーにフィードバック
+      uiElements.applyBandwidthBtn.textContent = '適用済み';
+      setTimeout(() => { uiElements.applyBandwidthBtn.textContent = '適用'; }, 1500);
+    } catch (e) {
+      alert('帯域の適用に失敗しました。');
+    }
+  });
+  
 
   uiElements.joinCallBtn.addEventListener("click", joinCall);
   uiElements.hangUpBtn.addEventListener("click", hangUp);
@@ -330,3 +348,6 @@ function initializeEventListeners() {
 updateRoleUI(document.querySelector('input[name="role"]:checked').value);
 initializeEventListeners();
 populateCameraList();
+
+// コンソールから簡単に呼べるようにエクスポートもグローバルにセット
+if (typeof window !== 'undefined') window.setVideoBandwidthKbps = setVideoBandwidthKbps;
