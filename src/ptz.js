@@ -31,8 +31,8 @@ const confirmationManager = {
     },
 
     startChecker(target) {
-        const checkInterval = 50; // 50msごとに確認　※調整必要
-        const maxDuration = 5000; // 最大5秒でタイムアウト※調整必要
+        const checkInterval = 10; // 1msごとに確認　※調整必要
+        const maxDuration = 5000; // 最大5秒でタイムアウト　※調整必要
         let elapsedTime = 0;
 
         this.intervalId[target] = setInterval(() => {
@@ -58,7 +58,7 @@ const confirmationManager = {
                 // カメラのstep値に基づいて、現実的な許容誤差（tolerance）を計算
                 const step = capabilities[cmdType]?.step; // カメラのステップ値
                 // insta360 linkの場合、pan,tilt：3600、zoom：1.0
-                const tolerance = step ? step * 0.75 : (cmdType === 'zoom' ? 0.05 : 2.0); // toleranceの計算　※調整必要
+                const tolerance = step ? step * 0.1 : (cmdType === 'zoom' ? 0.05 : 2.0); // toleranceの計算　※調整必要
 
                 if (Math.abs(currentValue - targetValue) > tolerance) {
                     allFinished = false;
@@ -97,15 +97,11 @@ const confirmationManager = {
 
 // PTZ制約を適用する関数（送信側）
 export async function applyPtzConstraint(target, type, value) {
-    // High-frequency calls are rate-limited: commands that arrive sooner than `delay`
-    // after the last *applied* command are discarded. This prevents accumulation
-    // of many pending commands and ensures the camera is commanded at most once
-    // per `delay` milliseconds.
     if (!applyPtzConstraint._state) {
         applyPtzConstraint._state = {
             // lastApply を key 単位で保持する (key = `${target}#${type}`)
             lastApplyByKey: {},
-            delay: 5 // ms ※調整可能
+            delay: 0 // ms ※調整可能
         };
     }
     const s = applyPtzConstraint._state;
@@ -130,11 +126,9 @@ export async function applyPtzConstraint(target, type, value) {
     };
     const now = performance.now();
     const last = s.lastApplyByKey[key] || 0;
-    // If enough time has passed since the last actual apply for this key, perform this command.
     if (now - last >= s.delay) {
         const applied = await doApply({ target, type, value });
         if (applied) {
-            // record the time when the command was actually applied for this key
             s.lastApplyByKey[key] = performance.now();
         }
     } else {
@@ -297,6 +291,7 @@ export function handleReceiverDataChannel(event) {
             const startTime = pendingPtzCommands.get(msg.id);
             // startTime is stored as epoch ms (Date.now() or parsed ISO timestamp). Use Date.now() for diff.
             const ptzLatency = Date.now() - startTime;
+            console.log(Date.now(), startTime);
             const timedOut = msg.timedOut || false;
 
             console.log(`PTZ Latency (${msg.command}): ${ptzLatency.toFixed(2)} ms, Timed Out: ${timedOut}`);

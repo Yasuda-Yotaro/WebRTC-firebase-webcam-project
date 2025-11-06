@@ -142,6 +142,13 @@
         <button id="connectImuBtn">接続</button>
         <button id="disconnectImuBtn" disabled>切断</button>
       </div>
+
+      <div style="margin-top:6px;">
+        <label for="imuMinIntervalInput">IMU 最小送信間隔 (ms):</label>
+        <input type="number" id="imuMinIntervalInput" min="1" step="1" value="50" style="width:100px;">
+        <button id="imuApplyMinIntervalBtn">適用</button>
+      </div>
+
       <div style="margin-top:6px;">
         <button id="calibrateImuBtn">ゼロ設定 (キャリブレーション)</button>
       </div>

@@ -7,7 +7,7 @@ let ws = null; // websocketオブジェクトを保持
 let enabled = false; // IMU制御の有効/無効フラグ
 
 // IMU制御のパラメータ
-const DEFAULT_MIN_INTERVAL_MS = 100; // 最小送信間隔（ms） -> 10Hz ※調整必要
+const DEFAULT_MIN_INTERVAL_MS = 50; // 最小送信間隔（ms） -> 25Hz ※調整必要
 let minIntervalMs = DEFAULT_MIN_INTERVAL_MS;
 let lastSentTime = 0;
 let lastRawPitch = null; // 最後に受信した生のIMUピッチ値
@@ -96,11 +96,9 @@ function handleImuData(data) {
   if (!vals) return;
 
   const { pitch, yaw } = vals;
-  // IMU may include a timestamp string (ISO 8601) produced by the sender (e.g. C# DateTime.UtcNow.ToString("o")).
-  // Parse it to epoch ms for use as the command startTime. If parsing fails, fall back to Date.now().
   const imuTimestampStr = data && (data.timestamp || data.time || data.t); // support several possible fields
   const imuTimestampMs = imuTimestampStr ? Date.parse(imuTimestampStr) : NaN;
-  const commandStartTime = Number.isFinite(imuTimestampMs) ? imuTimestampMs : Date.now();
+  const commandStartTime = imuTimestampMs;
 
   // pitch/yaw の変化量を PTZ の相対変化に変換する
   const target = state.activePtzTarget || 'camera1';
@@ -163,8 +161,6 @@ function handleImuData(data) {
     const newVal = targetVal;
     // before send: check channel state
     if (state.ptzChannel?.readyState === 'open') {
-      // send measured command so receiver can compute latency when camera reaches target
-      // pass the IMU timestamp (epoch ms) as startTime so receiver can compute Date.now() - startTime
       ptz.sendPtzCommand('tilt', newVal, { startTime: commandStartTime });
     } else {
       console.warn('IMU: cannot send tilt - ptzChannel not open');
@@ -176,7 +172,6 @@ function handleImuData(data) {
     const targetVal = current + deltaPanUnits;
     const newVal = targetVal;
     if (state.ptzChannel?.readyState === 'open') {
-      // send measured command so receiver can compute latency when camera reaches target
       ptz.sendPtzCommand('pan', newVal, { startTime: commandStartTime });
     } else {
       console.warn('IMU: cannot send pan - ptzChannel not open');

@@ -82,3 +82,5 @@ export const enableImuCheckbox = document.getElementById('enableImuCheckbox');
 export const connectImuBtn = document.getElementById('connectImuBtn');
 export const disconnectImuBtn = document.getElementById('disconnectImuBtn');
 export const calibrateImuBtn = document.getElementById('calibrateImuBtn');
+export const imuMinIntervalInput = document.getElementById('imuMinIntervalInput');
+export const imuApplyMinIntervalBtn = document.getElementById('imuApplyMinIntervalBtn');

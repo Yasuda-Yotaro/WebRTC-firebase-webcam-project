@@ -14,7 +14,7 @@ export async function updateResolutionDisplay() {
   try {
       const stats = await state.peerConnection.getStats();
 
-      // まず、すべての解像度表示を一旦非表示にする
+      // 最初に解像度表示を非表示にする
       if (state.remoteTracks) {
           Object.values(state.remoteTracks).forEach(trackInfo => {
               if (trackInfo && trackInfo.displayElement) {

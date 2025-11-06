@@ -316,7 +316,11 @@ function initializeEventListeners() {
   if (uiElements.connectImuBtn && uiElements.disconnectImuBtn && uiElements.enableImuCheckbox) {
     uiElements.connectImuBtn.addEventListener('click', () => {
       imu.connectImu(); 
-      imu.configureImu({ panSign: -1, tiltSign: 1 });
+      // connect 時に現在の UI 設定を適用
+      const minInterval = parseInt(uiElements.imuMinIntervalInput?.value, 10);
+      const cfg = { panSign: -1, tiltSign: 1 };
+      if (!isNaN(minInterval) && minInterval > 0) cfg.minIntervalMs = minInterval;
+      imu.configureImu(cfg);
       uiElements.connectImuBtn.disabled = true;
       uiElements.disconnectImuBtn.disabled = false;
     });
@@ -340,6 +344,19 @@ function initializeEventListeners() {
         if (caps.tilt) sendPtzCommand('tilt', 0);
       });
     }
+    // IMU 最小送信間隔の適用ボタン
+    if (uiElements.imuApplyMinIntervalBtn && uiElements.imuMinIntervalInput) {
+      uiElements.imuApplyMinIntervalBtn.addEventListener('click', () => {
+        const v = parseInt(uiElements.imuMinIntervalInput.value, 10);
+        if (isNaN(v) || v < 1) {
+          alert('IMUの最小間隔は正の整数 (ms) を入力してください');
+          return;
+        }
+        imu.configureImu({ minIntervalMs: v });
+        uiElements.imuApplyMinIntervalBtn.textContent = '適用済み';
+        setTimeout(() => { uiElements.imuApplyMinIntervalBtn.textContent = '適用'; }, 1500);
+      });
+    }
     
   }
 }
@@ -350,4 +367,11 @@ initializeEventListeners();
 populateCameraList();
 
 // コンソールから簡単に呼べるようにエクスポートもグローバルにセット
-if (typeof window !== 'undefined') window.setVideoBandwidthKbps = setVideoBandwidthKbps;
+if (typeof window !== 'undefined') {
+  window.setVideoBandwidthKbps = setVideoBandwidthKbps;
+  window.setImuMinInterval = (ms) => {
+    const v = Number(ms);
+    if (Number.isNaN(v) || v <= 0) throw new Error('ms must be a positive number');
+    return imu.configureImu({ minIntervalMs: v });
+  };
+}

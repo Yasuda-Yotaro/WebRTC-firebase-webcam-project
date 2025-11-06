@@ -69,7 +69,6 @@ export function stopEvaluation() {
  */
 export function logData(data) {
     if (!isEvaluating) return;
-    // ★★★ 変更点：経過時間ではなく、フォーマットされた現在時刻を記録 ★★★
     const timestamp = getFormattedTimestamp(new Date());
     evaluationBuffer.push({ timestamp, ...data });
 }
