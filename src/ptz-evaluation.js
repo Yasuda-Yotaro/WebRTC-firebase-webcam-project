@@ -8,23 +8,6 @@ let flushIntervalId = null;
 
 const FLUSH_INTERVAL = 1000;
 
-/**
- * 現在の日時を YYYY-MM-DD HH:mm:ss.sss 形式の文字列で取得する
- * @param {Date} date - フォーマットするDateオブジェクト
- * @returns {string} フォーマットされた日時文字列
- */
-function getFormattedTimestamp(date) {
-    const Y = date.getFullYear();
-    const M = String(date.getMonth() + 1).padStart(2, '0');
-    const D = String(date.getDate()).padStart(2, '0');
-    const h = String(date.getHours()).padStart(2, '0');
-    const m = String(date.getMinutes()).padStart(2, '0');
-    const s = String(date.getSeconds()).padStart(2, '0');
-    const ms = String(date.getMilliseconds()).padStart(3, '0');
-    return `${Y}-${M}-${D} ${h}:${m}:${s}.${ms}`;
-}
-
-
 function flushBuffer() {
     if (evaluationBuffer.length > 0) {
         evaluationData.push(...evaluationBuffer);
@@ -69,7 +52,8 @@ export function stopEvaluation() {
  */
 export function logData(data) {
     if (!isEvaluating) return;
-    const timestamp = getFormattedTimestamp(new Date());
+    // Use ISO 8601 with millisecond precision so CSV contains an interoperable timestamp
+    const timestamp = new Date().toISOString();
     evaluationBuffer.push({ timestamp, ...data });
 }
 
