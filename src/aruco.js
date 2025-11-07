@@ -3,7 +3,7 @@
 import * as ptz from './ptz.js';
 import * as state from './state.js';
 import * as uiElements from './ui-elements.js';
-import * as evaluation from './evaluation.js'; 
+import * as evaluation from './aruco-evaluation.js'; 
 
 // 処理解像度の幅（高さはアスペクト比を維持して自動計算）
 // 解像度を低くすることで、処理負荷を軽減し、パフォーマンスを向上させる目的

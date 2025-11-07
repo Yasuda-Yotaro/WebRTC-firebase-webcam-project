@@ -8,7 +8,7 @@ import { sendPtzCommand, updateReceiverPtzControls, sendUnmeasuredPtzCommand } f
 import { startStatsRecording, stopStatsRecording, downloadStatsAsCsv } from './stats.js';
 import { startRecording, stopRecording, downloadVideo } from './recording.js';
 import { start as startArucoTracking, stop as stopArucoTracking } from './aruco.js';
-import * as evaluation from './evaluation.js';
+import * as evaluation from './aruco-evaluation.js';
 import * as imu from './imu.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
 

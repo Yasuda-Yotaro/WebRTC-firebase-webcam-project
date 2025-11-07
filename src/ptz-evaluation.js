@@ -3,7 +3,6 @@
 let evaluationData = [];
 let evaluationBuffer = [];
 let isEvaluating = false;
-let startTime = 0;
 let flushIntervalId = null;
 
 const FLUSH_INTERVAL = 1000;
@@ -20,7 +19,6 @@ export function startEvaluation() {
     isEvaluating = true;
     evaluationData = [];
     evaluationBuffer = [];
-    startTime = performance.now();
     flushIntervalId = setInterval(flushBuffer, FLUSH_INTERVAL);
 
     console.log("PTZ Latency evaluation started.");
@@ -52,7 +50,6 @@ export function stopEvaluation() {
  */
 export function logData(data) {
     if (!isEvaluating) return;
-    // Use ISO 8601 with millisecond precision so CSV contains an interoperable timestamp
     const timestamp = new Date().toISOString();
     evaluationBuffer.push({ timestamp, ...data });
 }
@@ -70,7 +67,6 @@ export function downloadCSV() {
             if (typeof value === 'number') {
                 return value.toFixed(3);
             }
-            // タイムスタンプは文字列なので、そのまま表示
             return value;
         }).join(',');
     }).join('\n');
@@ -86,5 +82,8 @@ export function downloadCSV() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
+        evaluationData = [];
+        evaluationBuffer = [];
+        document.getElementById('downloadPtzCsvBtn').disabled = true;
+    }   
 }
