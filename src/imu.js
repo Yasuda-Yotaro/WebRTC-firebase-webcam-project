@@ -23,7 +23,7 @@ let calibration = { pitchOffset: 0, yawOffset: 0 }; // キャリブレーショ�
 /**
  * IMUデータの形式を想定：{ pitch: number, yaw: number }
  * pitch -> tilt, yaw -> pan にマッピング
- * 受信した値はカメラのrangeに合わせてスケーリングする必要がある
+ * 受信した値をカメラのrangeに合わせてスケーリングする
  */
 
 // WebSocketのデフォルトURL
