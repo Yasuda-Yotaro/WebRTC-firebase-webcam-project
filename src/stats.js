@@ -78,13 +78,14 @@ function populateSenderStats(stats, dataToRecord) {
         const lastOutboundReport = state.lastStatsReport?.get(report.id); // 前回取得した同じレポートを参照(差分を計算するため)
         const bytesSent = report.bytesSent - (lastOutboundReport?.bytesSent ?? 0); // 今回の総送信バイト数から、前回の総送信バイト数を引いて、この1秒間の送信バイト数を計算
         const packetsSent = report.packetsSent - (lastOutboundReport?.packetsSent ?? 0); // 同様に、送信パケット数の差分を計算
+        const encodeTimeDelta = report.totalEncodeTime - (lastOutboundReport?.totalEncodeTime ?? 0);
 
         // 収集したデータをdataToRecordオブジェクトに格納、キー名にcameraNameを付与して区別
         dataToRecord[`${cameraName}_sent_resolution`] = `${report.frameWidth}x${report.frameHeight}`; // 送信解像度
         dataToRecord[`${cameraName}_sent_fps`] = report.framesPerSecond; // 送信フレームレート
         dataToRecord[`${cameraName}_sent_bitrate_kbps`] = Math.round((Math.max(0, bytesSent) * 8) / 1000); // 送信ビットレート(kbps)
         dataToRecord[`${cameraName}_packets_sent_per_second`] = Math.max(0, packetsSent); // 送信パケット数/秒
-        dataToRecord[`${cameraName}_total_encode_time_s`] = report.totalEncodeTime; // 総エンコード時間(秒)
+        dataToRecord[`${cameraName}_encode_time_s`] = encodeTimeDelta != null ? Number(encodeTimeDelta.toFixed(4)) : null; // 1秒当たりのエンコード時間(秒)
         dataToRecord[`${cameraName}_keyframes_encoded`] = report.keyFramesEncoded; // キーフレーム数
         dataToRecord[`${cameraName}_quality_limitation_reason`] = report.qualityLimitationReason; // 品質制限の理由
         dataToRecord[`${cameraName}_quality_limitation_resolution_changes`] = report.qualityLimitationResolutionChanges; // 品質制限による解像度変更回数
@@ -156,6 +157,7 @@ function populateReceiverStats(stats, dataToRecord) {
         const lastInboundReport = state.lastStatsReport?.get(report.id);
         const bytesReceived = report.bytesReceived - (lastInboundReport?.bytesReceived ?? 0);
         const packetsReceived = report.packetsReceived - (lastInboundReport?.packetsReceived ?? 0);
+        const decodeTimeDelta = report.totalDecodeTime - (lastInboundReport?.totalDecodeTime ?? 0);
 
         dataToRecord[`${cameraName}_received_resolution`] = `${report.frameWidth}x${report.frameHeight}`; // 受信解像度
         dataToRecord[`${cameraName}_received_fps`] = report.framesPerSecond; // 受信フレームレート
@@ -165,7 +167,7 @@ function populateReceiverStats(stats, dataToRecord) {
         dataToRecord[`${cameraName}_fraction_lost`] = report.fractionLost; // パケットロス率
         dataToRecord[`${cameraName}_packets_lost`] = report.packetsLost; // パケットロス数
         dataToRecord[`${cameraName}_frames_dropped`] = report.framesDropped; // ドロップされたフレーム数
-        dataToRecord[`${cameraName}_total_decode_time_s`] = report.totalDecodeTime; // 総デコード時間(秒)
+        dataToRecord[`${cameraName}_decode_time_s`] = decodeTimeDelta != null ? Number(decodeTimeDelta.toFixed(4)) : null; // 1秒当たりのデコード時間(秒)
         dataToRecord[`${cameraName}_keyframes_decoded`] = report.keyFramesDecoded; // キーフレーム数
         dataToRecord[`${cameraName}_jitter_buffer_delay_s`] = report.jitterBufferDelay; // ジッターバッファ遅延(秒)
         dataToRecord[`${cameraName}_fir_count`] = report.firCount; // FIR数

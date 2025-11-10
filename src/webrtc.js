@@ -1,6 +1,7 @@
 // webrtc.js
 
 import { db } from "./firebase-config.js";
+
 /*
   collection:Firestoreのコレクションへの参照を作成する
   doc:Firestoreのドキュメントへの参照を作成する
@@ -18,7 +19,7 @@ import { stopStatsRecording, updateResolutionDisplay, startStatsRecording } from
 import { stopRecording } from './recording.js';
 import { stop as stopArucoTracking } from './aruco.js';
 
-// 利用可能な解像度のプリセット
+// 解像度のプリセット
 export const RESOLUTIONS = {
   vga: { width: 640, height: 360 },
   qhd: { width: 960, height: 540 },

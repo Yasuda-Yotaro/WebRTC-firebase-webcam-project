@@ -38,7 +38,10 @@ export function connectImu(url = DEFAULT_WS_URL) {
   ws.onerror = (e) => console.error('IMU WebSocket error', e);
   ws.onmessage = (e) => {
     try {
+      const recvAt = Date.now();
       const data = JSON.parse(e.data);
+      // WebSocketで受信したローカル時刻を付与（記録のみ）
+      data._socketReceivedAt = recvAt;
       handleImuData(data);
     } catch (err) {
       console.warn('Invalid IMU message', e.data);
@@ -98,7 +101,9 @@ function handleImuData(data) {
   const { pitch, yaw } = vals;
   const imuTimestampStr = data && (data.timestamp || data.time || data.t); // support several possible fields
   const imuTimestampMs = imuTimestampStr ? Date.parse(imuTimestampStr) : NaN;
-  const commandStartTime = imuTimestampMs;
+  // device timestamp があれば startTime として渡す（epoch ms に変換）、また評価用に ISO 文字列も保持する
+  const commandStartTime = !Number.isNaN(imuTimestampMs) ? imuTimestampMs : undefined;
+  const deviceTimestampIso = !Number.isNaN(imuTimestampMs) ? new Date(imuTimestampMs).toISOString() : (imuTimestampStr ? String(imuTimestampStr) : undefined);
 
   // pitch/yaw の変化量を PTZ の相対変化に変換する
   const target = state.activePtzTarget || 'camera1';
@@ -161,7 +166,11 @@ function handleImuData(data) {
     const newVal = targetVal;
     // before send: check channel state
     if (state.ptzChannel?.readyState === 'open') {
-      ptz.sendPtzCommand('tilt', newVal, { startTime: commandStartTime });
+  const opts = {};
+  if (commandStartTime !== undefined) opts.startTime = commandStartTime;
+  if (data && data._socketReceivedAt !== undefined) opts.socketReceivedAt = data._socketReceivedAt;
+  if (deviceTimestampIso !== undefined) opts.deviceTimestamp = deviceTimestampIso;
+  ptz.sendPtzCommand('tilt', newVal, opts);
     } else {
       console.warn('IMU: cannot send tilt - ptzChannel not open');
     }
@@ -172,7 +181,11 @@ function handleImuData(data) {
     const targetVal = current + deltaPanUnits;
     const newVal = targetVal;
     if (state.ptzChannel?.readyState === 'open') {
-      ptz.sendPtzCommand('pan', newVal, { startTime: commandStartTime });
+  const opts = {};
+  if (commandStartTime !== undefined) opts.startTime = commandStartTime;
+  if (data && data._socketReceivedAt !== undefined) opts.socketReceivedAt = data._socketReceivedAt;
+  if (deviceTimestampIso !== undefined) opts.deviceTimestamp = deviceTimestampIso;
+  ptz.sendPtzCommand('pan', newVal, opts);
     } else {
       console.warn('IMU: cannot send pan - ptzChannel not open');
     }

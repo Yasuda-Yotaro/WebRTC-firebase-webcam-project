@@ -12,9 +12,7 @@ import * as evaluation from './aruco-evaluation.js';
 import * as imu from './imu.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
 
-/**
- * アプリケーションのすべてのイベントリスナーを初期化する。
- */
+// initialize all event listeners for the application
 function initializeEventListeners() {
   uiElements.roleInputs.forEach(input => {
     input.addEventListener("change", (e) => updateRoleUI(e.target.value));
@@ -62,7 +60,6 @@ function initializeEventListeners() {
       alert('帯域の適用に失敗しました。');
     }
   });
-  
 
   uiElements.joinCallBtn.addEventListener("click", joinCall);
   uiElements.hangUpBtn.addEventListener("click", hangUp);

@@ -31,7 +31,7 @@ const confirmationManager = {
     },
 
     startChecker(target) {
-        const checkInterval = 10; // 1msごとに確認　※調整必要
+        const checkInterval = 10; // 10msごとに確認　※調整必要
         const maxDuration = 5000; // 最大5秒でタイムアウト　※調整必要
         let elapsedTime = 0;
 
@@ -47,7 +47,7 @@ const confirmationManager = {
 
             const settings = track.getSettings(); // getSettings()：トラックの現在の設定を取得
             const capabilities = track.getCapabilities(); // getCapabilities()：トラックのサポートされている機能を取得
-            let allFinished = true; // すべてのコマンドが完了したかどうかを追跡するためのフラグ
+            let allFinished = true; 
             let timedOut = elapsedTime >= maxDuration; // タイムアウト判定(true/false)
 
             // 現在の設定値と目標値を比較(パン、チルト、ズーム)
@@ -213,7 +213,13 @@ export function sendPtzCommand(type, value, options = {}) {
         // Use Date.now() ms epoch for start time so it is compatible with ISO timestamps
         // coming from external IMU sources (e.g., C# DateTime.UtcNow.ToString("o")).
         const effectiveStartTime = (options && options.startTime !== undefined) ? options.startTime : Date.now();
-        pendingPtzCommands.set(commandId, effectiveStartTime);
+        // 保存するペンディング情報に受信時刻とデバイスタイムスタンプも保持する
+        const pendingEntry = {
+            startTime: effectiveStartTime,
+            socketReceivedAt: options && options.socketReceivedAt !== undefined ? options.socketReceivedAt : null,
+            deviceTimestamp: options && options.deviceTimestamp !== undefined ? options.deviceTimestamp : null
+        };
+        pendingPtzCommands.set(commandId, pendingEntry);
 
         state.ptzChannel.send(JSON.stringify(command));
         document.getElementById(`${type}Slider`).value = clampedValue;
@@ -288,16 +294,24 @@ export function handleReceiverDataChannel(event) {
 
         //　PTZコマンドの完了確認の受信と評価データの記録
         } else if (msg.type === 'command_ack' && pendingPtzCommands.has(msg.id)) {
-            const startTime = pendingPtzCommands.get(msg.id);
-            // startTime is stored as epoch ms (Date.now() or parsed ISO timestamp). Use Date.now() for diff.
-            const ptzLatency = Date.now() - startTime;
-            console.log(Date.now(), startTime);
+            const entry = pendingPtzCommands.get(msg.id);
+            // entry: { startTime: epoch ms, socketReceivedAt: epoch ms | null }
             const timedOut = msg.timedOut || false;
 
-            console.log(`PTZ Latency (${msg.command}): ${ptzLatency.toFixed(2)} ms, Timed Out: ${timedOut}`);
-            
-            ptzEvaluation.logData({ ptzLatency, command: msg.command, timedOut: timedOut ? 1 : 0 });
-            
+            let ptzLatency = null;
+            if (entry) {
+                const start = typeof entry === 'number' ? entry : entry.startTime;
+                if (typeof start === 'number') ptzLatency = Date.now() - start;
+            }
+
+            // socketReceivedAt を ISO 文字列にしてログに含める（存在しない場合は null）
+            const socketReceivedAtIso = entry && entry.socketReceivedAt ? new Date(entry.socketReceivedAt).toISOString() : null;
+            const deviceTimestampIso = entry && entry.deviceTimestamp ? entry.deviceTimestamp : null;
+
+            console.log(`PTZ Latency (${msg.command}): ${ptzLatency !== null ? ptzLatency.toFixed(2) + ' ms' : 'N/A'}, Timed Out: ${timedOut}, socketReceivedAt: ${socketReceivedAtIso}, deviceTimestamp: ${deviceTimestampIso}`);
+
+            ptzEvaluation.logData({ ptzLatency, command: msg.command, timedOut: timedOut ? 1 : 0, socketReceivedAt: socketReceivedAtIso, deviceTimestamp: deviceTimestampIso });
+
             pendingPtzCommands.delete(msg.id);
         }
     };
