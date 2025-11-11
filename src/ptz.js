@@ -31,7 +31,7 @@ const confirmationManager = {
     },
 
     startChecker(target) {
-        const checkInterval = 10; // 10msごとに確認　※調整必要
+        const checkInterval = 1; // 1msごとに確認　※調整必要
         const maxDuration = 5000; // 最大5秒でタイムアウト　※調整必要
         let elapsedTime = 0;
 
