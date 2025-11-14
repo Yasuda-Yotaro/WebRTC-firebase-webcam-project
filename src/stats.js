@@ -91,6 +91,10 @@ function populateSenderStats(stats, dataToRecord) {
         dataToRecord[`${cameraName}_quality_limitation_resolution_changes`] = report.qualityLimitationResolutionChanges; // 品質制限による解像度変更回数
         dataToRecord[`${cameraName}_retransmitted_packets_sent`] = report.retransmittedPacketsSent; // 再送パケット数
         dataToRecord[`${cameraName}_nack_count`] = report.nackCount; // NACK数
+        // フレームエンコード数（1秒あたりの差分）と総計を記録
+        const framesEncodedDelta = (report.framesEncoded ?? 0) - (lastOutboundReport?.framesEncoded ?? 0);
+        dataToRecord[`${cameraName}_frames_encoded_per_second`] = Math.max(0, framesEncodedDelta);
+        dataToRecord[`${cameraName}_frames_encoded_total`] = report.framesEncoded ?? null;
       }
     }
     if (report.type === 'remote-inbound-rtp' && report.mediaType === 'video') {
@@ -173,6 +177,10 @@ function populateReceiverStats(stats, dataToRecord) {
         dataToRecord[`${cameraName}_fir_count`] = report.firCount; // FIR数
         dataToRecord[`${cameraName}_pli_count`] = report.pliCount; // PLI数
         dataToRecord[`${cameraName}_jitter_buffer_emitted_count`] = report.jitterBufferEmittedCount; // ジッターバッファから出力されたフレーム数
+        // フレームデコード数（1秒あたりの差分）と総計を記録
+        const framesDecodedDelta = (report.framesDecoded ?? 0) - (lastInboundReport?.framesDecoded ?? 0);
+        dataToRecord[`${cameraName}_frames_decoded_per_second`] = Math.max(0, framesDecodedDelta);
+        dataToRecord[`${cameraName}_frames_decoded_total`] = report.framesDecoded ?? null;
       }
     }
     if (report.type === 'candidate-pair' && report.nominated && report.state === 'succeeded') {
