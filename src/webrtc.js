@@ -28,24 +28,46 @@ export const RESOLUTIONS = {
   fourK: { width: 3840, height: 2160 },
 };
 
-// WebRTC接続設定
-export const RTC_CONFIGURATION = {
-  iceServers: [
-    { urls: "stun:stun.relay.metered.ca:80" },
-    { urls: "turn:a.relay.metered.ca:80", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
-    { urls: "turn:a.relay.metered.ca:80?transport=tcp", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
-    { urls: "turn:a.relay.metered.ca:443", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
-    { urls: "turn:a.relay.metered.ca:443?transport=tcp", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
-  ],
-  iceCandidatePoolSize: 10, // 事前に収集しておくICE Candidateの数を設定
-};
+// ICE サーバー群を定義 (UIの選択で STUN / TURN / 両方 を切替可能)
+const STUN_SERVERS = [
+  { urls: "stun:stun.relay.metered.ca:80" },
+];
+
+const TURN_SERVERS = [
+  { urls: "turn:a.relay.metered.ca:80", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
+  { urls: "turn:a.relay.metered.ca:80?transport=tcp", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
+  { urls: "turn:a.relay.metered.ca:443", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
+  { urls: "turn:a.relay.metered.ca:443?transport=tcp", username: "3c2899b6892a0dd428438fa2", credential: "UjVDP6QSI1bu0yiq" },
+];
+
+export function getRtcConfiguration() {
+  const mode = uiElements.iceModeSelect?.value || 'both';
+  let iceServers = [];
+  switch (mode) {
+    case 'stun-only':
+      iceServers = STUN_SERVERS;
+      break;
+    case 'turn-only':
+      iceServers = TURN_SERVERS;
+      break;
+    case 'both':
+    default:
+      iceServers = [...STUN_SERVERS, ...TURN_SERVERS];
+      break;
+  }
+
+  return {
+    iceServers,
+    iceCandidatePoolSize: 10,
+  };
+}
 
 /**
  * RTCPeerConnectionインスタンスを作成し、イベントハンドラを設定する。
  * @returns {RTCPeerConnection} RTCPeerConnectionのインスタンス
  */
 function createPeerConnection() {
-  const pc = new RTCPeerConnection(RTC_CONFIGURATION);
+  const pc = new RTCPeerConnection(getRtcConfiguration());
   // 接続状態が変化したときに実行されるイベントハンドラを設定
   pc.onconnectionstatechange = () => {
     console.log(`PeerConnection state changed to: ${pc.connectionState}`);

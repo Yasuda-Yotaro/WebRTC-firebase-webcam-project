@@ -56,6 +56,15 @@
       <option value="H265">H265</option>
     </select>
     
+    <div style="margin-top:8px;">
+      <label for="iceModeSelect">ICE モード:</label>
+      <select id="iceModeSelect">
+        <option value="both" selected>STUN + TURN (両方)</option>
+        <option value="stun-only">STUN のみ</option>
+        <option value="turn-only">TURN のみ</option>
+      </select>
+    </div>
+    
     <div style="margin-top:6px;">
       <label for="bandwidthKbpsInput">帯域制限 (kbps):</label>
       <input type="number" id="bandwidthKbpsInput" min="0" step="100" placeholder="例:1500" style="width:100px;">

@@ -14,6 +14,7 @@ export const cameraSelect2Container = document.getElementById("cameraSelect2Cont
 export const resolutionSelect = document.getElementById("resolution");
 export const framerateSelect = document.getElementById("framerate");
 export const codecSelect = document.getElementById("codecSelect");
+export const iceModeSelect = document.getElementById("iceModeSelect");
 export const startCameraBtn = document.getElementById("startCamera");
 export const bandwidthKbpsInput = document.getElementById("bandwidthKbpsInput");
 export const applyBandwidthBtn = document.getElementById("applyBandwidthBtn");
