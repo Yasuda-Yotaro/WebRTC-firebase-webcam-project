@@ -220,7 +220,7 @@ export async function hangUp() {
  * 送信者（Sender）として通話を開始する。
  */
 export async function startCall() {
-  uiElements.startCameraBtn.disabled = true; // 二重クリック防止のため、ボタンを無効化
+  uiElements.startCameraBtn.disabled = true; 
   const cameraCount = parseInt(uiElements.cameraCountSelect.value, 10); // 選択されたカメラ台数を取得
   const selectedResolution = uiElements.resolutionSelect.value; // 選択された解像度を取得
   const selectedFramerate = parseInt(uiElements.framerateSelect.value, 10);  // 選択されたフレームレートを取得

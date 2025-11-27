@@ -4,6 +4,59 @@ import * as state from './state.js';
 import * as uiElements from './ui-elements.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
 
+// 中継サーバー接続用
+let bridgeSocket = null;
+
+connectToBridge();
+
+// 中継サーバー (relay.js) に接続する関数
+function connectToBridge() {
+    // relay.js で設定したポート8080に接続
+    bridgeSocket = new WebSocket('ws://localhost:8080');
+    
+    bridgeSocket.onopen = () => {
+        console.log("SENDER: Connected to Node.js Bridge (relay.js)");
+    };
+    
+    bridgeSocket.onerror = (err) => {
+        console.error("SENDER: Bridge Connection Error", err);
+    };
+}
+
+function convertStepToAngle(type, stepValue) {
+    // ズームは対象外なのでそのまま返す
+    if (type === 'zoom') {
+        return stepValue;
+    }
+
+    // 1度 = 3600
+    const STEPS_PER_DEGREE = 3600;
+
+    // 割り算をして角度(度)に変換
+    const angle = stepValue / STEPS_PER_DEGREE;
+
+    return angle;
+}
+
+// AIアプリ(C++アプリ)へ角度を送るヘルパー関数
+function sendAngleToBridge(commandType, value) {
+    if (bridgeSocket && bridgeSocket.readyState === WebSocket.OPEN) {
+        
+        // 変換を実行
+        const angleValue = convertStepToAngle(commandType, value);
+
+        const prefix = commandType === 'pan' ? 'P' : (commandType === 'tilt' ? 'T' : null);
+        
+        if (prefix) {
+            bridgeSocket.send(`${prefix}:${angleValue.toFixed(4)}`);
+            
+            // 確認用ログ
+            console.log(`SENDER: Step ${value} -> ${angleValue.toFixed(4)} deg (${commandType})`);
+        }
+    }
+}
+
+
 /**
  * @param {string} target - PTZ操作の対象カメラ（例: 'camera1'）
  * @param {string} type - PTZ操作の種類（例: 'pan', 'tilt', 'zoom'）
@@ -186,6 +239,8 @@ export function sendUnmeasuredPtzCommand(type, value) {
 
     const { min, max } = state.ptzCapabilities[target][type];
     const clampedValue = Math.max(min, Math.min(max, value)); // 範囲内に制限
+
+    sendAngleToBridge(type, clampedValue);
     
     const command = { type: 'command', target, command: type, value: clampedValue };
 
@@ -207,6 +262,9 @@ export function sendPtzCommand(type, value, options = {}) {
     const clampedValue = Math.max(min, Math.min(max, value)); // 範囲内に制限
 
     const commandId = `${performance.now()}-${Math.random()}`; // 一意なコマンドIDを生成 
+
+    sendAngleToBridge(type, clampedValue);
+
     const command = { type: 'command', target, command: type, value: clampedValue, id: commandId };
 
     try {

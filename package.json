@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "firebase": "^11.9.1",
-    "webm-duration-fix": "^1.0.4"
+    "webm-duration-fix": "^1.0.4",
+    "ws": "^8.18.3"
   }
 }
