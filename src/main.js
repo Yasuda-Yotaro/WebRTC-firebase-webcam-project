@@ -12,7 +12,7 @@ import * as evaluation from './aruco-evaluation.js';
 import * as imu from './imu.js';
 import * as ptzEvaluation from './ptz-evaluation.js';
 
-// initialize all event listeners for the application
+// イベントリスナーの初期化
 function initializeEventListeners() {
   uiElements.roleInputs.forEach(input => {
     input.addEventListener("change", (e) => updateRoleUI(e.target.value));
