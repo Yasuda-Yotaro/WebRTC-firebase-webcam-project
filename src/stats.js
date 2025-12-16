@@ -50,7 +50,7 @@ function populateSenderStats(stats, dataToRecord) {
   const camera1TrackId = state.videoTracks.camera1?.id; // stateからカメラ1の映像トラックIDを取得
   const camera2TrackId = state.videoTracks.camera2?.id; // stateからカメラ2の映像トラックIDを取得
 
-  // 'media-source'レポートのIDと、それがどの映像トラック（trackIdentifier）に対応するかを紐づけるためのMap（高機能な連想配列）を作成
+  // 'media-source'レポートのIDと、それがどの映像トラック（trackIdentifier）に対応するかを紐づけるためのMapを作成
   const sourceToTrackIdentifierMap = new Map();
   stats.forEach(report => {
     if (report.type === 'media-source') {
