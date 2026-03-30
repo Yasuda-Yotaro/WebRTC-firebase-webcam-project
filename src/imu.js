@@ -136,7 +136,7 @@ function handleImuData(data) {
   residualPitch += dPitch;
   residualYaw += dYaw;
 
-  // レート制限: 最小送信間隔より短い場合は送信しない
+  // 最小送信間隔より短い場合は送信しない
   if (now - lastSentTime < minIntervalMs) {
     lastRawPitch = clampedPitch;
     lastRawYaw = clampedYaw;
