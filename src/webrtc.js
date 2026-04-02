@@ -19,7 +19,7 @@ import { stopStatsRecording, updateResolutionDisplay, startStatsRecording } from
 import { stopRecording } from './recording.js';
 import { stop as stopArucoTracking } from './aruco.js';
 
-// 解像度のプリセット
+// 解像度のプリセットを定義
 export const RESOLUTIONS = {
   vga: { width: 640, height: 360 },
   qhd: { width: 960, height: 540 },
